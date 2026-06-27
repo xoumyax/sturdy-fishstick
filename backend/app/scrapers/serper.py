@@ -46,6 +46,22 @@ def _parse_date(raw: Optional[str]) -> Optional[datetime]:
     return None
 
 
+_AGGREGATE_PATTERNS = (
+    "linkedin.com/jobs/search",
+    "linkedin.com/jobs/pytorch-jobs",
+    "glassdoor.com/Job/",
+    "indeed.com/jobs",
+    "facebook.com/groups",
+    "reddit.com/r/",
+    "/search?",
+    "/jobs?",
+)
+
+
+def _is_aggregate_url(url: str) -> bool:
+    return any(p in url for p in _AGGREGATE_PATTERNS)
+
+
 class SerperScraper(BaseScraper):
     def __init__(self, api_key: str, time_filter: str = "month"):
         self._api_key = api_key
@@ -86,7 +102,7 @@ class SerperScraper(BaseScraper):
         # Organic results as fallback (when no jobs block)
         for item in data.get("organic", [])[:5]:
             url = item.get("link", "")
-            if not url:
+            if not url or _is_aggregate_url(url):
                 continue
             jobs.append(RawJob(
                 title=item.get("title", ""),
@@ -116,7 +132,7 @@ class SerperScraper(BaseScraper):
         jobs: list[RawJob] = []
         for item in data.get("organic", []):
             url = item.get("link", "")
-            if "linkedin.com/jobs" not in url:
+            if "linkedin.com/jobs/view/" not in url:
                 continue
             jobs.append(RawJob(
                 title=item.get("title", ""),

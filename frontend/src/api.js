@@ -16,9 +16,11 @@ export const api = {
     return req(`/jobs?${q}`);
   },
   updateJob: (id, body) => req(`/jobs/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  generateCoverLetter: (id) => req(`/jobs/${id}/cover-letter`, { method: "POST" }),
   triggerSearch: () => req("/search/trigger", { method: "POST" }),
   getRuns: () => req("/runs"),
   getStats: () => req("/config/stats"),
   getConfig: () => req("/config"),
   updateConfig: (yaml_content) => req("/config", { method: "POST", body: JSON.stringify({ yaml_content }) }),
+  exportCsvUrl: () => `${BASE}/jobs/export`,
 };

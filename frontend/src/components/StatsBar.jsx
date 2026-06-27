@@ -34,13 +34,22 @@ export function StatsBar({ onTrigger }) {
       <Stat label="Priority" value={stats?.priority_matches ?? "–"} />
       <Stat label="Applied" value={stats?.applied ?? "–"} />
       <Stat label="Last run" value={stats ? timeAgo(stats.last_run) : "–"} />
-      <button
-        onClick={handleTrigger}
-        disabled={triggering}
-        className="ml-auto text-sm px-4 py-1.5 bg-white text-indigo-700 font-semibold rounded-lg disabled:opacity-60 hover:bg-indigo-50 transition-colors"
-      >
-        {triggering ? "Searching…" : "Search now"}
-      </button>
+      <div className="ml-auto flex gap-2">
+        <a
+          href={api.exportCsvUrl()}
+          download="jobradar_export.csv"
+          className="text-sm px-3 py-1.5 bg-indigo-500 text-white rounded-lg hover:bg-indigo-400 transition-colors"
+        >
+          Export CSV
+        </a>
+        <button
+          onClick={handleTrigger}
+          disabled={triggering}
+          className="text-sm px-4 py-1.5 bg-white text-indigo-700 font-semibold rounded-lg disabled:opacity-60 hover:bg-indigo-50 transition-colors"
+        >
+          {triggering ? "Searching…" : "Search now"}
+        </button>
+      </div>
     </div>
   );
 }

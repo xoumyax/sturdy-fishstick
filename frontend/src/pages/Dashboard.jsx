@@ -33,8 +33,6 @@ export function Dashboard() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold text-slate-800 mb-4">JobRadar</h1>
-
       <StatsBar onTrigger={fetchJobs} />
 
       {/* Tab bar */}

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from sqlmodel import Field, SQLModel
@@ -24,6 +24,7 @@ class Job(SQLModel, table=True):
     is_priority: bool = False
     status: str = "new"  # new | saved | applied | screen | interview | offer | rejected
     notes: Optional[str] = None
+    deadline: Optional[date] = None
     raw_data: Optional[str] = None  # JSON string
 
 
@@ -31,6 +32,7 @@ class JobUpdate(SQLModel):
     status: Optional[str] = None
     notes: Optional[str] = None
     is_priority: Optional[bool] = None
+    deadline: Optional[date] = None
 
 
 class JobRead(SQLModel):
@@ -48,3 +50,4 @@ class JobRead(SQLModel):
     is_priority: bool
     status: str
     notes: Optional[str]
+    deadline: Optional[date]

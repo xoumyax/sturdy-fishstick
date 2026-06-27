@@ -28,12 +28,51 @@ Description: {description}
 Return ONLY valid JSON. No markdown, no explanation outside the JSON.\
 """
 
+COVER_LETTER_PROMPT = """\
+You are a professional cover letter writer. Write a concise, compelling cover letter \
+for the job below based on the candidate's profile. Use a warm but professional tone. \
+3 short paragraphs: (1) why this role, (2) relevant skills/experience, (3) closing. \
+Address it to "Hiring Manager" since we don't have a name. Do not invent facts.
+
+Candidate:
+Name: {name}
+Positions seeking: {positions}
+Skills: {expertise}
+Background: {resume_summary}
+
+Job:
+Title: {title}
+Company: {company}
+Description: {description}
+
+Write only the cover letter body. No subject line, no "Dear [name]" — start with "Dear Hiring Manager,".\
+"""
+
 
 class OllamaMatcher:
     def __init__(self, base_url: str, model: str, timeout: float = 30.0):
         self._base_url = base_url.rstrip("/")
         self._model = model
         self._timeout = timeout
+
+    async def _call_ollama(self, prompt: str, timeout: Optional[float] = None) -> Optional[str]:
+        payload = {
+            "model": self._model,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+        }
+        t = timeout or self._timeout
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(f"{self._base_url}/api/chat", json=payload, timeout=t)
+                resp.raise_for_status()
+            return resp.json().get("message", {}).get("content", "")
+        except httpx.TimeoutException:
+            logger.warning("Ollama timed out")
+            return None
+        except (httpx.HTTPStatusError, httpx.RequestError) as e:
+            logger.warning("Ollama error: %s", e)
+            return None
 
     async def score_job(
         self,
@@ -44,7 +83,6 @@ class OllamaMatcher:
         expertise: list[str],
         resume_summary: str,
     ) -> tuple[Optional[float], Optional[str]]:
-        # Use chars 200-1200 to skip boilerplate intro
         desc = description or ""
         relevant_desc = desc[200:1200] if len(desc) > 200 else desc
 
@@ -57,37 +95,16 @@ class OllamaMatcher:
             description=relevant_desc,
         )
 
-        payload = {
-            "model": self._model,
-            "messages": [{"role": "user", "content": prompt}],
-            "stream": False,
-        }
-
-        try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{self._base_url}/api/chat",
-                    json=payload,
-                    timeout=self._timeout,
-                )
-                resp.raise_for_status()
-        except httpx.TimeoutException:
-            logger.warning("Ollama timed out scoring job: %s", title)
-            return None, None
-        except (httpx.HTTPStatusError, httpx.RequestError) as e:
-            logger.warning("Ollama error scoring job %r: %s", title, e)
+        content = await self._call_ollama(prompt)
+        if content is None:
             return None, None
 
-        content = resp.json().get("message", {}).get("content", "")
         try:
-            # Strip any accidental markdown fences
             clean = content.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
             result = json.loads(clean)
-            score = float(result["score"])
-            reason = str(result["reason"])
-            return score, reason
+            return float(result["score"]), str(result["reason"])
         except Exception:
-            logger.warning("Failed to parse Ollama response for %r: %r", title, content[:200])
+            logger.warning("Failed to parse Ollama score response for %r: %r", title, content[:200])
             return None, None
 
     async def score_batch(
@@ -108,5 +125,30 @@ class OllamaMatcher:
                 resume_summary=resume_summary,
             )
             results.append((score, reason))
-            await asyncio.sleep(0.1)  # small gap between Ollama calls
+            await asyncio.sleep(0.1)
         return results
+
+    async def generate_cover_letter(
+        self,
+        title: str,
+        company: Optional[str],
+        description: Optional[str],
+        name: str,
+        positions: list[str],
+        expertise: list[str],
+        resume_summary: str,
+    ) -> Optional[str]:
+        desc = description or ""
+        relevant_desc = desc[:2000]  # Use more context for cover letters
+
+        prompt = COVER_LETTER_PROMPT.format(
+            name=name,
+            positions=", ".join(positions),
+            expertise=", ".join(expertise),
+            resume_summary=resume_summary.strip(),
+            title=title,
+            company=company or "the company",
+            description=relevant_desc,
+        )
+
+        return await self._call_ollama(prompt, timeout=60.0)
