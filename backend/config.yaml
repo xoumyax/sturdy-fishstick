@@ -1,0 +1,43 @@
+profile:
+  name: "Soumyajyoti Dutta"
+  positions:
+    - "Software Engineer Intern"
+    - "Machine Learning Engineer Intern"
+    - "Research Scientist Intern"
+  expertise:
+    - "Python"
+    - "Machine Learning"
+    - "PyTorch"
+    - "Computer Vision"
+  resume_summary: |
+    MS Computer Science student with experience in ML research.
+    Strong Python, PyTorch, computer vision. Seeking summer internships in ML/AI.
+  location_preference: "United States"
+  remote_ok: true
+  relocation_ok: false
+
+search:
+  sources:
+    - google_jobs
+    - linkedin
+  time_filter: "month"          # week | month | 3months
+  max_results_per_query: 20
+  extra_keywords: []
+  company_blacklist: []
+  company_whitelist: []
+
+scheduler:
+  times:
+    - "08:00"
+    - "14:00"
+    - "20:00"
+  timezone: "America/Chicago"
+
+llm:
+  model: "phi3:mini"
+  priority_threshold: 7
+  batch_size: 10
+
+app:
+  port: 8001
+  host: "127.0.0.1"
