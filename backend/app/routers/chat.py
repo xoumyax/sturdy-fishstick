@@ -155,7 +155,13 @@ async def chat_stream(body: ChatRequest):
     messages = [{"role": "system", "content": system_prompt}]
     messages += [{"role": m.role, "content": m.content} for m in body.messages[-20:]]  # keep last 20
 
-    payload = {"model": cfg.llm.model, "messages": messages, "stream": True}
+    payload = {
+        "model": cfg.llm.model,
+        "messages": messages,
+        "stream": True,
+        "keep_alive": 300,          # stay loaded for 5 min during chat sessions
+        "options": {"num_ctx": 2048},
+    }
     ollama_url = f"{cfg.ollama_base_url}/api/chat"
 
     async def generate():

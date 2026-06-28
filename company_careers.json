@@ -1,0 +1,302 @@
+{
+    "Frontier AI Labs": [
+        {
+            "name": "Anthropic",
+            "url": "https://www.anthropic.com/careers"
+        },
+        {
+            "name": "Cohere",
+            "url": "https://cohere.com/careers"
+        },
+        {
+            "name": "ElevenLabs",
+            "url": "https://elevenlabs.io/careers"
+        },
+        {
+            "name": "Google DeepMind",
+            "url": "https://deepmind.google/about/careers/"
+        },
+        {
+            "name": "Mistral AI",
+            "url": "https://mistral.ai/careers/"
+        },
+        {
+            "name": "OpenAI",
+            "url": "https://openai.com/careers/"
+        },
+        {
+            "name": "Scale AI",
+            "url": "https://scale.com/careers"
+        },
+        {
+            "name": "xAI",
+            "url": "https://x.ai/careers"
+        }
+    ],
+    "Big Tech & Enterprise Software": [
+        {
+            "name": "Adobe",
+            "url": "https://careers.adobe.com/us/en"
+        },
+        {
+            "name": "Airbnb",
+            "url": "https://careers.airbnb.com/"
+        },
+        {
+            "name": "Amazon",
+            "url": "https://www.amazon.jobs/"
+        },
+        {
+            "name": "Apple",
+            "url": "https://jobs.apple.com/"
+        },
+        {
+            "name": "Atlassian",
+            "url": "https://www.atlassian.com/company/careers"
+        },
+        {
+            "name": "GitHub",
+            "url": "https://github.com/about/careers"
+        },
+        {
+            "name": "GitLab",
+            "url": "https://about.gitlab.com/jobs/"
+        },
+        {
+            "name": "Google",
+            "url": "https://careers.google.com/"
+        },
+        {
+            "name": "Meta",
+            "url": "https://www.metacareers.com/"
+        },
+        {
+            "name": "Microsoft",
+            "url": "https://careers.microsoft.com/"
+        },
+        {
+            "name": "Netflix",
+            "url": "https://jobs.netflix.com/"
+        },
+        {
+            "name": "Uber",
+            "url": "https://www.uber.com/us/en/careers/"
+        }
+    ],
+    "Hardware & Chip Manufacturing": [
+        {
+            "name": "AMD",
+            "url": "https://www.amd.com/en/corporate/careers.html"
+        },
+        {
+            "name": "ASML",
+            "url": "https://www.asml.com/en/careers"
+        },
+        {
+            "name": "Applied Materials",
+            "url": "https://www.appliedmaterials.com/us/en/careers.html"
+        },
+        {
+            "name": "Broadcom",
+            "url": "https://www.broadcom.com/company/careers"
+        },
+        {
+            "name": "Intel",
+            "url": "https://jobs.intel.com/"
+        },
+        {
+            "name": "Marvell Technology",
+            "url": "https://www.marvell.com/company/careers.html"
+        },
+        {
+            "name": "Micron Technology",
+            "url": "https://www.micron.com/about/careers"
+        },
+        {
+            "name": "NVIDIA",
+            "url": "https://www.nvidia.com/en-us/about-nvidia/careers/"
+        },
+        {
+            "name": "NXP Semiconductors",
+            "url": "https://careers.nxp.com/"
+        },
+        {
+            "name": "Qualcomm",
+            "url": "https://careers.qualcomm.com/"
+        },
+        {
+            "name": "TSMC",
+            "url": "https://careers.tsmc.com/"
+        }
+    ],
+    "Financial Organizations & Quant Trading": [
+        {
+            "name": "Airwallex",
+            "url": "https://www.airwallex.com/careers"
+        },
+        {
+            "name": "Bloomberg",
+            "url": "https://www.bloomberg.com/company/careers/"
+        },
+        {
+            "name": "Citadel",
+            "url": "https://www.citadel.com/careers/"
+        },
+        {
+            "name": "Goldman Sachs",
+            "url": "https://www.goldmansachs.com/careers/"
+        },
+        {
+            "name": "Hudson River Trading (HRT)",
+            "url": "https://www.hudsonrivertrading.com/careers/"
+        },
+        {
+            "name": "JPMorgan Chase",
+            "url": "https://careers.jpmorgan.com/"
+        },
+        {
+            "name": "Jane Street",
+            "url": "https://www.janestreet.com/join-jane-street/"
+        },
+        {
+            "name": "Morgan Stanley",
+            "url": "https://www.morganstanley.com/people-opportunities"
+        },
+        {
+            "name": "Optiver",
+            "url": "https://optiver.com/working-at-optiver/"
+        },
+        {
+            "name": "Stripe",
+            "url": "https://stripe.com/jobs"
+        },
+        {
+            "name": "Two Sigma",
+            "url": "https://www.twosigma.com/careers/"
+        }
+    ],
+    "Data Analytics & Platforms": [
+        {
+            "name": "Alteryx",
+            "url": "https://www.alteryx.com/careers"
+        },
+        {
+            "name": "Databricks",
+            "url": "https://www.databricks.com/company/careers"
+        },
+        {
+            "name": "Palantir",
+            "url": "https://www.palantir.com/careers/"
+        },
+        {
+            "name": "Snowflake",
+            "url": "https://careers.snowflake.com/"
+        },
+        {
+            "name": "Splunk",
+            "url": "https://www.splunk.com/en_us/careers.html"
+        },
+        {
+            "name": "Tableau (Salesforce)",
+            "url": "https://careers.salesforce.com/en/"
+        },
+        {
+            "name": "Teradata",
+            "url": "https://careers.teradata.com/"
+        }
+    ],
+    "Consulting Companies": [
+        {
+            "name": "Accenture",
+            "url": "https://www.accenture.com/us-en/careers"
+        },
+        {
+            "name": "Bain & Company",
+            "url": "https://www.bain.com/careers/"
+        },
+        {
+            "name": "Boston Consulting Group (BCG)",
+            "url": "https://careers.bcg.com/"
+        },
+        {
+            "name": "Capgemini",
+            "url": "https://www.capgemini.com/careers/"
+        },
+        {
+            "name": "Deloitte",
+            "url": "https://careers.deloitte.com/"
+        },
+        {
+            "name": "EY",
+            "url": "https://www.ey.com/en_us/careers"
+        },
+        {
+            "name": "KPMG",
+            "url": "https://www.kpmg.us/careers.html"
+        },
+        {
+            "name": "McKinsey & Company",
+            "url": "https://www.mckinsey.com/careers"
+        },
+        {
+            "name": "PwC",
+            "url": "https://jobs.us.pwc.com/"
+        }
+    ],
+    "Insurance & Insurtech": [
+        {
+            "name": "Allstate",
+            "url": "https://www.allstate.jobs/"
+        },
+        {
+            "name": "GEICO",
+            "url": "https://careers.geico.com/"
+        },
+        {
+            "name": "Lemonade",
+            "url": "https://www.lemonade.com/careers"
+        },
+        {
+            "name": "Oscar Health",
+            "url": "https://www.hioscar.com/careers"
+        },
+        {
+            "name": "Progressive",
+            "url": "https://www.progressive.com/careers/"
+        },
+        {
+            "name": "State Farm",
+            "url": "https://jobs.statefarm.com/"
+        }
+    ],
+    "Startups Actively Hiring": [
+        {
+            "name": "0x Labs",
+            "url": "https://0x.org/careers"
+        },
+        {
+            "name": "Alchemy",
+            "url": "https://www.alchemy.com/careers"
+        },
+        {
+            "name": "Aviator",
+            "url": "https://www.aviator.co/careers"
+        },
+        {
+            "name": "BoldVoice",
+            "url": "https://www.boldvoice.com/careers"
+        },
+        {
+            "name": "Runway",
+            "url": "https://runwayml.com/careers/"
+        },
+        {
+            "name": "Soraban",
+            "url": "https://soraban.com/careers"
+        },
+        {
+            "name": "Y Combinator (Internal)",
+            "url": "https://www.ycombinator.com/careers"
+        }
+    ]
+}

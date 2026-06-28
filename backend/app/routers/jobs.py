@@ -155,6 +155,15 @@ async def generate_resume_advice(job_id: str, session: Session = Depends(get_ses
     return {"advice": advice}
 
 
+@router.delete("/{job_id}", status_code=204)
+def delete_job(job_id: str, session: Session = Depends(get_session)):
+    job = session.get(Job, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    session.delete(job)
+    session.commit()
+
+
 @router.post("/{job_id}/notify")
 async def notify_job(job_id: str, session: Session = Depends(get_session)):
     job = session.get(Job, job_id)

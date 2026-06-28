@@ -221,16 +221,184 @@ function configToYaml(cfg) {
   return lines.join("\n") + "\n";
 }
 
-export function Settings() {
+function CareerWatchTab() {
+  const [watchData, setWatchData] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [crawling, setCrawling] = useState(false);
+
+  useEffect(() => {
+    api.getCareerWatch().then((d) => { if (Object.keys(d).length > 0) setWatchData(d); }).catch(() => {});
+  }, []);
+
+  function handleFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      let parsed;
+      try {
+        parsed = JSON.parse(ev.target.result);
+      } catch (err) {
+        setMsg({ type: "error", text: "Could not parse file — make sure it is valid JSON. " + err.message });
+        setTimeout(() => setMsg(null), 6000);
+        return;
+      }
+      try {
+        await api.updateCareerWatch(parsed);
+        setWatchData(parsed);
+        const total = Object.values(parsed).reduce((a, v) => a + v.length, 0);
+        setMsg({ type: "success", text: `Saved ${total} companies across ${Object.keys(parsed).length} categories.` });
+      } catch (err) {
+        setMsg({ type: "error", text: "Backend error: " + err.message + " — try restarting the backend server." });
+      }
+      setTimeout(() => setMsg(null), 6000);
+    };
+    reader.readAsText(file);
+  }
+
+  async function handleCrawl() {
+    setCrawling(true);
+    try {
+      await api.crawlCareers();
+      setMsg({ type: "success", text: "Career crawl started — check the Dashboard for new listings." });
+    } catch (e) {
+      setMsg({ type: "error", text: "Crawl failed: " + e.message });
+    } finally {
+      setCrawling(false);
+      setTimeout(() => setMsg(null), 5000);
+    }
+  }
+
+  const totalCompanies = watchData ? Object.values(watchData).reduce((a, v) => a + v.length, 0) : 0;
+  const categories = watchData ? Object.keys(watchData) : [];
+
   return (
-    <div className="px-8 py-8 max-w-3xl space-y-6">
-      <div className="mb-2">
+    <div className="space-y-4">
+      {/* Upload card */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h2 className="font-semibold text-brand-dark">Career Page Watchlist</h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {watchData ? `${totalCompanies} companies across ${categories.length} categories` : "No watchlist uploaded yet"}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <label className="cursor-pointer px-3 py-1.5 text-xs font-semibold rounded-xl border border-brand-dark text-brand-dark hover:bg-brand-dark hover:text-white transition-colors">
+              Upload JSON
+              <input type="file" accept=".json" className="hidden" onChange={handleFile} />
+            </label>
+            <button
+              onClick={handleCrawl}
+              disabled={crawling || !watchData}
+              className="px-3 py-1.5 text-xs font-semibold rounded-xl text-white disabled:opacity-50 transition-all"
+              style={{ background: "linear-gradient(135deg,#097C87,#1A8C72)" }}
+            >
+              {crawling ? "Starting…" : "Crawl Now"}
+            </button>
+          </div>
+        </div>
+
+        {msg && (
+          <p className={`text-xs px-3 py-2 rounded-xl mb-3 ${msg.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+            {msg.text}
+          </p>
+        )}
+
+        <div className="text-xs text-slate-500 bg-slate-50 rounded-xl p-3 mb-3">
+          <p className="font-medium mb-1">Expected JSON format:</p>
+          <pre className="font-mono text-[10px] text-slate-600 leading-relaxed overflow-x-auto">{`{
+  "Frontier AI Labs": [
+    { "name": "Anthropic", "url": "https://www.anthropic.com/careers" },
+    { "name": "OpenAI",    "url": "https://openai.com/careers/" }
+  ],
+  "Big Tech": [
+    { "name": "Google", "url": "https://careers.google.com/" }
+  ]
+}`}</pre>
+        </div>
+
+        <p className="text-[10px] text-slate-400">
+          Known ATS (Greenhouse, Lever) are detected automatically from the URL and queried via their JSON APIs.
+          When an API returns a 404 (wrong slug or moved ATS), Playwright/Chromium scrapes the career page directly.
+          Other companies use Serper site-search as a fallback.
+        </p>
+      </div>
+
+      {/* Company list */}
+      {watchData && (
+        <div className="space-y-3">
+          {categories.map((cat) => (
+            <div key={cat} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-slate-700">{cat}</h3>
+                <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{watchData[cat].length} companies</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {watchData[cat].map((c) => (
+                  <a
+                    key={c.name}
+                    href={c.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg border border-slate-200 hover:border-brand-teal hover:text-brand-dark transition-colors text-slate-600"
+                  >
+                    <span className="w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
+                      style={{ background: "#097C87" }}>
+                      {c.name[0]}
+                    </span>
+                    {c.name}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TABS = ["Config", "Career Watch", "Run History"];
+
+export function Settings() {
+  const [tab, setTab] = useState("Config");
+
+  return (
+    <div className="px-8 py-8 max-w-5xl">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Settings</h1>
         <p className="text-sm text-slate-400 mt-0.5">Configure your job search preferences</p>
       </div>
-      <ConfigEditor />
-      <LinkedInStatus />
-      <RunHistory />
+
+      {/* Tab bar */}
+      <div className="flex gap-1 mb-6 p-1 w-fit rounded-xl" style={{ background: "rgba(9,124,135,0.08)" }}>
+        {TABS.map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className="px-5 py-1.5 text-sm font-medium rounded-lg transition-all duration-150"
+            style={
+              tab === t
+                ? { background: "white", color: "#097C87", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", fontWeight: 600 }
+                : { color: "#5d8a8f" }
+            }
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-6">
+        {tab === "Config" && (
+          <>
+            <ConfigEditor />
+            <LinkedInStatus />
+          </>
+        )}
+        {tab === "Career Watch" && <CareerWatchTab />}
+        {tab === "Run History" && <RunHistory />}
+      </div>
     </div>
   );
 }

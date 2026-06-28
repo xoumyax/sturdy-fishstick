@@ -87,6 +87,7 @@ export function Dashboard({ onChat }) {
   const [config, setConfig] = useState(null);
   const [trends, setTrends] = useState(null);
   const [activeCountry, setActiveCountry] = useState(null);
+  const [crawlMsg, setCrawlMsg] = useState(null);
 
   useEffect(() => {
     api.getConfig().then(setConfig).catch(() => {});
@@ -110,6 +111,10 @@ export function Dashboard({ onChat }) {
     setJobs((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
   }
 
+  function handleDelete(id) {
+    setJobs((prev) => prev.filter((j) => j.id !== id));
+  }
+
   function handleMetricFilter(newFilters, filterId) {
     setActiveFilter((prev) => prev === filterId ? null : filterId);
     if (activeFilter === filterId) {
@@ -124,8 +129,19 @@ export function Dashboard({ onChat }) {
   const multiLocation = config?.profile?.location_preference?.length > 1;
   const showCountryCards = multiLocation && countries.length > 0;
 
+  async function triggerCrawl(fn, label) {
+    try {
+      await fn();
+      setCrawlMsg(`${label} started — results will appear shortly`);
+      setTimeout(() => setCrawlMsg(null), 4000);
+    } catch {
+      setCrawlMsg("Failed to start crawl");
+      setTimeout(() => setCrawlMsg(null), 3000);
+    }
+  }
+
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-8 py-8 max-w-7xl">
       <StatsBar
         onFilter={(f, id) => handleMetricFilter(f, id)}
         activeFilter={activeFilter}
@@ -153,6 +169,29 @@ export function Dashboard({ onChat }) {
         <TrendCharts />
       ) : (
         <>
+          {/* Crawl buttons */}
+          <div className="flex items-center gap-2 mb-5">
+            <button
+              onClick={() => triggerCrawl(api.crawlCareers, "Career crawl")}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-[1.02]"
+              style={{ background: "linear-gradient(135deg,#097C87,#1A8C72)", color: "white" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              Crawl Careers
+            </button>
+            <button
+              onClick={() => triggerCrawl(api.crawlPhd, "PhD crawl")}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-[1.02]"
+              style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "white" }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+              Crawl PhD
+            </button>
+            {crawlMsg && (
+              <span className="text-xs text-slate-500 ml-1 animate-pulse">{crawlMsg}</span>
+            )}
+          </div>
+
           {/* Country filter cards */}
           {showCountryCards && (
             <div className="mb-7">
@@ -168,8 +207,8 @@ export function Dashboard({ onChat }) {
                   </button>
                 )}
               </div>
-              <div className="overflow-x-auto -mx-8 px-8 pb-2" style={{ scrollbarWidth: "thin", scrollbarColor: "#b8ebd8 transparent" }}>
-                <div className="flex gap-3" style={{ width: "max-content" }}>
+              <div className="overflow-x-auto pb-2" style={{ scrollbarWidth: "thin", scrollbarColor: "#b8ebd8 transparent" }}>
+                <div className="flex gap-3 pr-8" style={{ width: "max-content" }}>
                   {countries.map((c, i) => (
                     <div key={c.country} style={{ width: 130, flexShrink: 0 }}>
                       <CountryCard
@@ -221,7 +260,9 @@ export function Dashboard({ onChat }) {
               <p className="text-xs text-slate-400 mb-3 font-medium">
                 {jobs.length} jobs{activeCountry ? ` · ${COUNTRY_FLAGS[activeCountry] || ""} ${activeCountry}` : ""}
               </p>
-              {jobs.map((job) => <JobCard key={job.id} job={job} onUpdate={handleUpdate} onChat={onChat} />)}
+              <div className="xl:grid xl:grid-cols-2 xl:gap-3">
+                {jobs.map((job) => <JobCard key={job.id} job={job} onUpdate={handleUpdate} onChat={onChat} onDelete={handleDelete} />)}
+              </div>
             </div>
           )}
         </>

@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..config import CONFIG_PATH, get_config, reload_config
 from ..scheduler import reload_scheduler
+
+CAREER_WATCH_PATH = Path(__file__).parent.parent.parent / "data" / "career_watchlist.json"
 
 router = APIRouter(prefix="/config", tags=["config"])
 
@@ -154,6 +159,32 @@ def get_trends():
     ]
 
     return {"daily": daily, "countries": countries}
+
+
+@router.get("/career-watch")
+def get_career_watch():
+    if not CAREER_WATCH_PATH.exists():
+        return {}
+    return json.loads(CAREER_WATCH_PATH.read_text(encoding="utf-8"))
+
+
+class CareerWatchUpdate(BaseModel):
+    data: dict
+
+
+@router.post("/career-watch")
+def update_career_watch(body: CareerWatchUpdate):
+    CAREER_WATCH_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # Validate structure: dict of category → list of {name, url}
+    for cat, entries in body.data.items():
+        if not isinstance(entries, list):
+            raise HTTPException(status_code=400, detail=f"Category '{cat}' must be a list")
+        for e in entries:
+            if not isinstance(e, dict) or "name" not in e or "url" not in e:
+                raise HTTPException(status_code=400, detail="Each entry must have 'name' and 'url' fields")
+    CAREER_WATCH_PATH.write_text(json.dumps(body.data, indent=2, ensure_ascii=False), encoding="utf-8")
+    total = sum(len(v) for v in body.data.values())
+    return {"status": "saved", "categories": len(body.data), "companies": total}
 
 
 @router.get("/linkedin-status")

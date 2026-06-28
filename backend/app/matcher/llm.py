@@ -91,11 +91,14 @@ class OllamaMatcher:
         self._model = model
         self._timeout = timeout
 
-    async def _call_ollama(self, prompt: str, timeout: Optional[float] = None) -> Optional[str]:
+    async def _call_ollama(self, prompt: str, timeout: Optional[float] = None,
+                            keep_alive: int = 0, num_ctx: int = 2048) -> Optional[str]:
         payload = {
             "model": self._model,
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
+            "keep_alive": keep_alive,   # 0 = unload immediately; seconds otherwise
+            "options": {"num_ctx": num_ctx},
         }
         t = timeout or self._timeout
         try:
@@ -131,13 +134,26 @@ class OllamaMatcher:
             description=relevant_desc,
         )
 
-        content = await self._call_ollama(prompt)
+        content = await self._call_ollama(prompt, keep_alive=120, num_ctx=2048)
         if content is None:
             return None, None
 
         try:
-            clean = content.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-            result = json.loads(clean)
+            clean = content.strip().removeprefix("```json").removeprefix("```").strip()
+            # Extract just the first balanced JSON object — handles extra text after the closing brace
+            start = clean.find("{")
+            if start == -1:
+                raise ValueError("no JSON object in response")
+            depth, end = 0, -1
+            for i, ch in enumerate(clean[start:], start):
+                if ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth == 0:
+                        end = i + 1
+                        break
+            result = json.loads(clean[start:end] if end != -1 else clean)
             return float(result["score"]), str(result["reason"])
         except Exception:
             logger.warning("Failed to parse Ollama score response for %r: %r", title, content[:200])
@@ -183,7 +199,7 @@ class OllamaMatcher:
             company=company or "the company",
             description=(description or "")[:2000],
         )
-        return await self._call_ollama(prompt, timeout=60.0)
+        return await self._call_ollama(prompt, timeout=60.0, keep_alive=300, num_ctx=2048)
 
     async def generate_resume_advice(
         self,
@@ -204,4 +220,4 @@ class OllamaMatcher:
             positions=", ".join(positions),
             expertise=", ".join(expertise),
         )
-        return await self._call_ollama(prompt, timeout=90.0)
+        return await self._call_ollama(prompt, timeout=90.0, keep_alive=300, num_ctx=3072)

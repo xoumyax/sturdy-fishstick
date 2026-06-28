@@ -89,7 +89,7 @@ function AiModal({ title, text, onClose }) {
   );
 }
 
-export function JobCard({ job, onUpdate, onChat }) {
+export function JobCard({ job, onUpdate, onChat, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(job.notes || "");
   const [deadline, setDeadline] = useState(job.deadline || "");
@@ -98,6 +98,14 @@ export function JobCard({ job, onUpdate, onChat }) {
   const [genCL, setGenCL] = useState(false);
   const [genRA, setGenRA] = useState(false);
   const [notifySent, setNotifySent] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  async function handleDelete(e) {
+    e.stopPropagation();
+    if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3000); return; }
+    await api.deleteJob(job.id);
+    onDelete?.(job.id);
+  }
 
   const score = job.match_score;
   const dim = score != null && score < 5;
@@ -157,12 +165,12 @@ export function JobCard({ job, onUpdate, onChat }) {
     } catch (e) { alert("Notify failed: " + e.message); }
   }
 
-  const sourceLabel = { google_jobs: "Google", linkedin: "LinkedIn", linkedin_direct: "LinkedIn ✓", indeed: "Indeed" };
+  const sourceLabel = { google_jobs: "Google", linkedin: "LinkedIn", linkedin_direct: "LinkedIn ✓", indeed: "Indeed", github_jobs: "⚡ SpeedyApply", career_page: "🏢 Career", phd: "🎓 PhD" };
 
   return (
     <>
       <div
-        className={`bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden transition-all hover:shadow-md hover:border-slate-300 ${dim ? "opacity-45" : ""} ${deadlineSoon ? "border-amber-300" : ""}`}
+        className={`group/card bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden transition-all hover:shadow-md hover:border-slate-300 ${dim ? "opacity-45" : ""} ${deadlineSoon ? "border-amber-300" : ""}`}
         style={{ boxShadow: expanded ? "0 4px 20px -4px rgba(0,0,0,0.10)" : undefined }}
       >
         {/* Left accent strip + card header */}
@@ -194,6 +202,19 @@ export function JobCard({ job, onUpdate, onChat }) {
                 <span className="text-[10px] text-slate-400 w-6 text-right">{timeAgo(job.date_found)}</span>
                 <ScoreBadge score={job.match_score} />
                 <svg className={`text-slate-300 transition-transform flex-shrink-0 ${expanded ? "rotate-180" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                <button
+                  onClick={handleDelete}
+                  title={confirmDelete ? "Click again to confirm" : "Delete this listing"}
+                  className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg transition-colors opacity-0 group-hover/card:opacity-100"
+                  style={{ color: confirmDelete ? "#ef4444" : "#94a3b8", background: confirmDelete ? "#fee2e2" : "transparent" }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    {confirmDelete
+                      ? <><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></>
+                      : <><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></>
+                    }
+                  </svg>
+                </button>
               </div>
             </div>
 

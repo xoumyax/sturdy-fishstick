@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { CharacterChat } from "./components/CharacterChat";
 import { ChatPanel } from "./components/ChatPanel";
+import { FloatingJobPanel } from "./components/FloatingJobPanel";
+import { LinkedInPanel } from "./components/LinkedInPanel";
 import { Dashboard } from "./pages/Dashboard";
 import { Settings } from "./pages/Settings";
 import { Tracker } from "./pages/Tracker";
@@ -148,6 +150,41 @@ export default function App() {
         onClearContext={() => setChatJob(null)}
       />
 
+      {/* LinkedIn feed panel */}
+      <LinkedInPanel chatOpen={chatOpen} />
+
+      {/* Career page crawl panel */}
+      <FloatingJobPanel
+        label="Careers"
+        sources={["career_page"]}
+        accent="#097C87"
+        accentDark="#065d66"
+        headerIcon={(color) => (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2" />
+            <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+          </svg>
+        )}
+        chatOpen={chatOpen}
+        toggleBottom={210}
+      />
+
+      {/* PhD positions panel */}
+      <FloatingJobPanel
+        label="PhD"
+        sources={["phd"]}
+        accent="#6366f1"
+        accentDark="#4f46e5"
+        headerIcon={(color) => (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+            <path d="M6 12v5c3 3 9 3 12 0v-5" />
+          </svg>
+        )}
+        chatOpen={chatOpen}
+        toggleBottom={265}
+      />
+
       {/* Corner companions */}
       <CornerCompanions chatOpen={chatOpen} />
     </div>
@@ -190,6 +227,7 @@ function CornerCompanions({ chatOpen }) {
             height: 64,
             objectFit: "contain",
             display: "block",
+            marginBottom: 10,
             filter: "drop-shadow(0 4px 10px rgba(200,80,200,0.30))",
             transition: "transform 0.2s ease",
             transform:

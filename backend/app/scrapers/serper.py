@@ -28,7 +28,7 @@ _AGGREGATE_PATTERNS = (
 # Country keyword → canonical country name (order matters: longer/specific phrases first)
 _COUNTRY_KEYWORDS: list[tuple[str, str]] = [
     # United States
-    ("united states", "United States"), (" usa", "United States"), (", ca ", "United States"),
+    ("united states", "United States"), (" usa", "United States"), ("us, ca", "United States"), ("us, tx", "United States"), ("us, wa", "United States"), ("us, ny", "United States"), ("us, or", "United States"), ("us, de", "United States"), (", ca ", "United States"),
     (", ny", "United States"), (", tx", "United States"), (", wa", "United States"),
     (", ma", "United States"), (", il", "United States"), (", co", "United States"),
     (", fl", "United States"), (", ga", "United States"), (", pa", "United States"),
@@ -38,6 +38,14 @@ _COUNTRY_KEYWORDS: list[tuple[str, str]] = [
     ("los angeles", "United States"), ("san jose", "United States"), ("menlo park", "United States"),
     ("mountain view", "United States"), ("palo alto", "United States"), ("redmond", "United States"),
     ("cupertino", "United States"), ("sunnyvale", "United States"), ("atlanta", "United States"),
+    ("california", "United States"), ("irvine", "United States"), ("san diego", "United States"),
+    ("dallas", "United States"), ("houston", "United States"), ("denver", "United States"),
+    ("portland", "United States"), ("minneapolis", "United States"), ("pittsburgh", "United States"),
+    ("raleigh", "United States"), ("nashville", "United States"), ("salt lake", "United States"),
+    ("washington, dc", "United States"), ("washington dc", "United States"),
+    (" virginia", "United States"), (" maryland", "United States"), (" texas", "United States"),
+    (" oregon", "United States"), (" michigan", "United States"), (" illinois", "United States"),
+    (" washington", "United States"), ("hillsboro", "United States"), ("auburn hills", "United States"),
     # India
     ("india", "India"), ("bangalore", "India"), ("bengaluru", "India"), ("mumbai", "India"),
     ("hyderabad", "India"), ("new delhi", "India"), ("delhi", "India"), ("chennai", "India"),
@@ -230,7 +238,7 @@ def build_queries(
     for pos in positions:
         for loc in locations:
             queries.append(f"{pos} {loc}")
-    for kw in extra_keywords:
+    for kw in (extra_keywords or []):
         queries.append(f"{positions[0]} {kw}")
     seen: set[str] = set()
     deduped: list[str] = []

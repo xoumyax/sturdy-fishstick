@@ -12,6 +12,7 @@ from .database import engine
 from .matcher.llm import OllamaMatcher
 from .models.job import Job
 from .models.run import SearchRun
+from .scrapers.github_jobs import fetch_github_jobs
 from .scrapers.serper import SerperScraper, build_queries
 
 logger = logging.getLogger(__name__)
@@ -61,11 +62,14 @@ async def run_search_pipeline() -> SearchRun:
             except Exception as e:
                 logger.warning("LinkedIn direct fetch failed: %s", e)
 
-        logger.info("Run %s: fetched %d raw jobs", run_id, len(raw_jobs))
+        # GitHub repo (free, no quota — always run)
+        gh_jobs = await fetch_github_jobs()
+        raw_jobs.extend(gh_jobs)
+        logger.info("Run %s: fetched %d raw jobs (%d from GitHub repo)", run_id, len(raw_jobs), len(gh_jobs))
 
         new_jobs: list[Job] = []
-        blacklist = {c.lower() for c in config.search.company_blacklist}
-        whitelist = {c.lower() for c in config.search.company_whitelist}
+        blacklist = {c.lower() for c in (config.search.company_blacklist or [])}
+        whitelist = {c.lower() for c in (config.search.company_whitelist or [])}
 
         with Session(engine) as session:
             existing_urls: set[str] = set(session.exec(select(Job.url)).all())

@@ -114,9 +114,9 @@ def load_config() -> Config:
             sources=s["sources"],
             time_filter=s.get("time_filter", "month"),
             max_results_per_query=s.get("max_results_per_query", 20),
-            extra_keywords=s.get("extra_keywords", []),
-            company_blacklist=s.get("company_blacklist", []),
-            company_whitelist=s.get("company_whitelist", []),
+            extra_keywords=s.get("extra_keywords") or [],
+            company_blacklist=s.get("company_blacklist") or [],
+            company_whitelist=s.get("company_whitelist") or [],
         ),
         scheduler=SchedulerConfig(
             times=sc["times"],
