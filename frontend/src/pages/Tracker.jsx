@@ -3,9 +3,9 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  closestCenter,
   useSensor,
   useSensors,
-  closestCenter,
 } from "@dnd-kit/core";
 import { useDroppable } from "@dnd-kit/core";
 import { useDraggable } from "@dnd-kit/core";
@@ -13,11 +13,11 @@ import { api } from "../api";
 import { ScoreBadge } from "../components/ScoreBadge";
 
 const COLUMNS = [
-  { id: "applied", label: "Applied", color: "bg-blue-50 border-blue-200" },
-  { id: "screen", label: "Phone Screen", color: "bg-yellow-50 border-yellow-200" },
-  { id: "interview", label: "Interview", color: "bg-purple-50 border-purple-200" },
-  { id: "offer", label: "Offer", color: "bg-emerald-50 border-emerald-200" },
-  { id: "rejected", label: "Rejected", color: "bg-red-50 border-red-200" },
+  { id: "applied",   label: "Applied",      headerColor: "#23CED9", bg: "bg-brand-teal/8",   border: "border-brand-teal/25" },
+  { id: "screen",    label: "Screening",    headerColor: "#F9D779", bg: "bg-brand-yellow/15", border: "border-brand-yellow/40" },
+  { id: "interview", label: "Interview",    headerColor: "#FCA47C", bg: "bg-brand-orange/8",  border: "border-brand-orange/25" },
+  { id: "offer",     label: "Offer",        headerColor: "#A1CCA6", bg: "bg-brand-sage/15",   border: "border-brand-sage/35" },
+  { id: "rejected",  label: "Rejected",     headerColor: "#94a3b8", bg: "bg-slate-100/80",    border: "border-slate-200" },
 ];
 
 function DraggableCard({ job }) {
@@ -32,7 +32,7 @@ function DraggableCard({ job }) {
       style={style}
       {...listeners}
       {...attributes}
-      className="bg-white rounded-lg border shadow-sm p-3 cursor-grab active:cursor-grabbing select-none"
+      className="bg-white rounded-xl border border-slate-200 shadow-sm p-3 cursor-grab active:cursor-grabbing select-none hover:border-brand-teal/40 transition-colors"
     >
       <p className="font-medium text-sm text-slate-800 leading-snug">{job.title}</p>
       {job.company && <p className="text-xs text-slate-500 mt-0.5">{job.company}</p>}
@@ -42,7 +42,7 @@ function DraggableCard({ job }) {
           href={job.url}
           target="_blank"
           rel="noreferrer"
-          className="text-xs text-indigo-500 hover:underline"
+          className="text-xs text-brand-dark hover:underline"
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
@@ -57,22 +57,23 @@ function Column({ col, jobs }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.id });
 
   return (
-    <div className="flex flex-col min-w-[200px] w-full">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-slate-700">{col.label}</h3>
-        <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">{jobs.length}</span>
+    <div className="flex flex-col min-w-[180px] w-full">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: col.headerColor }} />
+          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">{col.label}</h3>
+        </div>
+        <span className="text-[10px] font-bold bg-white border border-slate-200 text-slate-500 px-2 py-0.5 rounded-full shadow-sm">{jobs.length}</span>
       </div>
       <div
         ref={setNodeRef}
-        className={`flex-1 min-h-[120px] rounded-xl border-2 p-2 space-y-2 transition-colors ${col.color} ${
-          isOver ? "border-indigo-400 bg-indigo-50" : ""
+        className={`flex-1 min-h-[120px] rounded-2xl border-2 p-2 space-y-2 transition-colors ${col.bg} ${col.border} ${
+          isOver ? "border-brand-teal bg-brand-teal/20" : ""
         }`}
       >
-        {jobs.map((job) => (
-          <DraggableCard key={job.id} job={job} />
-        ))}
+        {jobs.map((job) => <DraggableCard key={job.id} job={job} />)}
         {jobs.length === 0 && (
-          <p className="text-xs text-slate-400 text-center pt-4">Drop here</p>
+          <p className="text-xs text-slate-400 text-center pt-6">Drop here</p>
         )}
       </div>
     </div>
@@ -82,7 +83,6 @@ function Column({ col, jobs }) {
 export function Tracker() {
   const [jobs, setJobs] = useState([]);
   const [activeJob, setActiveJob] = useState(null);
-
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   useEffect(() => {
@@ -91,56 +91,48 @@ export function Tracker() {
     ).then((results) => setJobs(results.flat()));
   }, []);
 
-  const columnJobs = (colId) => jobs.filter((j) => j.status === colId);
-
   async function handleDragEnd({ active, over }) {
     setActiveJob(null);
     if (!over || active.id === over.id) return;
     const job = jobs.find((j) => j.id === active.id);
     if (!job || job.status === over.id) return;
-
-    // Optimistic update
     setJobs((prev) => prev.map((j) => (j.id === active.id ? { ...j, status: over.id } : j)));
     try {
       await api.updateJob(active.id, { status: over.id });
     } catch {
-      // Revert on failure
       setJobs((prev) => prev.map((j) => (j.id === active.id ? { ...j, status: job.status } : j)));
     }
   }
 
-  function handleDragStart({ active }) {
-    setActiveJob(jobs.find((j) => j.id === active.id) || null);
-  }
-
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-slate-800">Application Tracker</h1>
-        <p className="text-sm text-slate-500">{jobs.length} active applications</p>
+    <div className="px-8 py-8">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Tracker</h1>
+          <p className="text-sm text-slate-400 mt-0.5">{jobs.length} active applications</p>
+        </div>
       </div>
 
       {jobs.length === 0 ? (
         <div className="text-center text-slate-400 mt-16">
-          <p className="text-4xl mb-3">📋</p>
-          <p>No applications yet. Mark jobs as "applied" from the Dashboard to track them here.</p>
+          <p className="text-5xl mb-3">📋</p>
+          <p>Mark jobs as "applied" from the Dashboard to track them here.</p>
         </div>
       ) : (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
+          onDragStart={({ active }) => setActiveJob(jobs.find((j) => j.id === active.id) || null)}
           onDragEnd={handleDragEnd}
         >
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {COLUMNS.map((col) => (
-              <Column key={col.id} col={col} jobs={columnJobs(col.id)} />
+              <Column key={col.id} col={col} jobs={jobs.filter((j) => j.status === col.id)} />
             ))}
           </div>
-
           <DragOverlay>
             {activeJob && (
-              <div className="bg-white rounded-lg border-2 border-indigo-400 shadow-xl p-3 opacity-95 rotate-1">
+              <div className="bg-white rounded-xl border-2 border-brand-teal shadow-xl p-3 rotate-1">
                 <p className="font-medium text-sm text-slate-800">{activeJob.title}</p>
                 {activeJob.company && <p className="text-xs text-slate-500 mt-0.5">{activeJob.company}</p>}
               </div>

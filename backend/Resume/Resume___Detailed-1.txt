@@ -1,0 +1,158 @@
+## Soumyajyoti Dutta
+
+(979) 326-2896 | soumyajyotidutta23@gmail.com | GitHub | LinkedIn
+
+Machine Learning for Cybersecurity | Small and Large Language Models | Automated Program Synthesis
+
+## Education
+
+## Texas A&amp;M University
+
+College Station, TX
+
+Ph.D. in Computer Science, Department of CSCE
+
+Spring 2024 - Fall 2029
+
+- Advisor:
+
+Dr. Marcus Botacin
+
+- Thesis: LLMs for Automated Rule Generation and Model Interpretability in Cyberdefense.
+
+## Texas A&amp;M University
+
+College Station, TX
+
+M.S. in Computer Engineering, Department of ECE
+
+Fall 2022 - Fall 2023
+
+- Coursework: ML Theory, Deep Learning, Data Mining, Randomized Algorithms, ML-Based Cyberdefenses.
+
+## SRM University
+
+Chennai, India
+
+B.Tech. in Electronics and Communication Engineering
+
+Fall 2017 - Spring 2021
+
+## Expertise
+
+## Core Competencies:
+
+- End-to-end ML pipelines: large-scale datasets, feature engineering, training, evaluation, deployment.
+- Classical ML: classification, clustering, regression, anomaly detection, forecasting.
+- Distributed training: trained 50+ models on multi-node GPU clusters (DDP/NCCL optimization).
+- Data analysis: statistical analysis and visualization for actionable insights.
+- Systems optimization: cache design, tokenization efficiency, memory-optimized loaders.
+
+## Technical Stack:
+
+Python (NumPy, Pandas, scikit-learn, Matplotlib, PyTorch, TensorFlow, HuggingFace), C++, Rust, YARA, Django/Flask, Git, AWS, SLURM
+
+## Professional Experience
+
+## Texas A&amp;M University
+
+Research Assistant (Affiliation: Botacin's Lab)
+
+College Station, TX
+
+Spring 2024 - Present
+
+- Designed curriculum and trained model families spanning 140M-9B parameters (BART, T5, Nemotron 3 Nano 9B, Gemma 3 270M/1B/4B, LLaMA 3.1 8B, LLaMA 3.2 1B/3B) for structured code generation using DeepSpeed, FSDP, and CUDA on multi-node SLURM GPU clusters.
+- YaraGen (USENIX 2026 submission in preparation):
+- ∗ Built end-to-end LLM pipeline for YARA rule generation using curriculum learning, structural reinforcement and AST-embedded tokenization.
+- ∗ Developed YARA syntax-aware tokenizer; reduced token-space by 10 × .
+- ∗ Introduced curriculum-based difficulty scheduling using rule types and complexity tiers.
+- ∗ Designed Brownie &amp; Puff Evaluation Function (BLEU + Parsing + SAT semantics) for training-time inference evaluation; benchmarked across T5, BART, and LLaMA model families.
+- ∗ Built BiLSTM and Transformer Encoder NER pipeline for IOC extraction from unstructured PDF threat reports.
+- ∗ Developed scalable dataset framework (translation, patching, IOC detection) producing 100M+ labeled training examples.
+- AutoPYara (open-sourced, ACSAC 2026 submission):
+- ∗ Re-implemented biclustering-based rule generation; evaluated multiple clustering algorithms.
+- ∗ Achieved 14% performance gain via optimized centroid selection, 10% via sub-clustering, and 8% improved generalization in low-sample threat-hunting scenarios.
+
+## Texas A&amp;M University
+
+Graduate Student Researcher
+
+College Station, TX
+
+Summer 2023
+
+- Mathematical modeling of prostate cancer genomic pathways; simulated multi-drug interactions.
+- Supported biologists through computational simulations for model validation.
+
+## Cognizant Technology Solutions
+
+Junior Software Engineer Kolkata, India
+
+2021 - 2022
+
+- Developed scalable full-stack web applications for logistics automation (Client: TJX Companies).
+- Optimized REST endpoints for latency &amp; concurrency and collaborated with QA/DevOps on CI/CD pipelines.
+
+## Machine Learning Malware Detection Model | 1st Place
+
+- End-to-end ML system for Windows PE classification.
+- Integrated EMBER, BODMAS, Benign-NET datasets (2M+ samples).
+- Extracted PE-header and byte-level features using LightGBM/XGBoost.
+- Achieved 96.2% accuracy, 0.97 F1; designed best-performing adversarial attacks.
+
+## Multiperspective Hawkeye
+
+- Implemented ISCA'16 cache replacement policy in zsim.
+- Extended with PC-tracking and multi-policy benchmarking.
+
+## HelloPentagon
+
+- Explainable ML-based malware defense chatbot integrating ML classification with LLM triage.
+
+## Carotid Artery USG Analysis
+
+- CNN-based ultrasound classification (Springer Chapter, 2022).
+
+## WildFire
+
+- Spatiotemporal ML modeling for wildfire spread prediction using climate and satellite data.
+
+## Fashion-MNIST
+
+- CNN classifier comparing ResNet/VGG architectures with regularization analysis.
+
+## Teaching &amp; Outreach
+
+## Teaching Assistant (CSCE 439/704)
+
+Data Analytics for Cybersecurity
+
+Texas A&amp;M University Spring 2026
+
+- Core data analytics foundations: clustering, supervised ML, anomaly detection, and security-focused data visualization applied to attacks, vulnerabilities, and adversarial behaviors.
+- Supported lectures &amp; grading, developed assignments, and provided project guidance
+
+## Partner &amp; Presenter
+
+TAMU CS Day
+
+- Conducted interactive demos on cybersecurity and AI research for high school students.
+
+## Teaching Assistant (ECEN 325)
+
+## Electronics
+
+- Supported lectures, grading, and lab sessions.
+
+## Technical Coordinator
+
+TAMU Student Research Week
+
+- Automated judging and submission infrastructure.
+
+Texas A&amp;M University 2024, 2025
+
+Texas A&amp;M University Summer 2023
+
+Texas A&amp;M University Spring 2023

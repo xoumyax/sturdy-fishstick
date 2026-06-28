@@ -22,9 +22,11 @@ class Job(SQLModel, table=True):
     match_score: Optional[float] = None
     match_reason: Optional[str] = None
     is_priority: bool = False
+    is_aggregate: bool = False
     status: str = "new"  # new | saved | applied | screen | interview | offer | rejected
     notes: Optional[str] = None
     deadline: Optional[date] = None
+    country: Optional[str] = None
     raw_data: Optional[str] = None  # JSON string
 
 
@@ -48,6 +50,8 @@ class JobRead(SQLModel):
     match_score: Optional[float]
     match_reason: Optional[str]
     is_priority: bool
+    is_aggregate: bool
     status: str
     notes: Optional[str]
     deadline: Optional[date]
+    country: Optional[str]

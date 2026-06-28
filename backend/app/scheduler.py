@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from datetime import datetime, timedelta
@@ -36,7 +35,7 @@ async def run_search_pipeline() -> SearchRun:
         queries = build_queries(
             positions=config.profile.positions,
             expertise=config.profile.expertise,
-            location=config.profile.location_preference,
+            locations=config.profile.location_preference,
             extra_keywords=config.search.extra_keywords,
         )
 
@@ -51,9 +50,19 @@ async def run_search_pipeline() -> SearchRun:
         if "linkedin" in config.search.sources:
             raw_jobs.extend(await scraper.fetch_linkedin(queries, config.search.max_results_per_query))
 
+        # LinkedIn direct (if credentials configured)
+        if config.linkedin_email and config.linkedin_password:
+            try:
+                from .scrapers.linkedin_scraper import LinkedInScraper
+                li = LinkedInScraper(config.linkedin_email, config.linkedin_password)
+                li_jobs = li.fetch(queries, config.profile.location_preference, max_results=15)
+                raw_jobs.extend(li_jobs)
+                logger.info("Run %s: LinkedIn direct fetched %d jobs", run_id, len(li_jobs))
+            except Exception as e:
+                logger.warning("LinkedIn direct fetch failed: %s", e)
+
         logger.info("Run %s: fetched %d raw jobs", run_id, len(raw_jobs))
 
-        # Dedup against DB by URL
         new_jobs: list[Job] = []
         blacklist = {c.lower() for c in config.search.company_blacklist}
         whitelist = {c.lower() for c in config.search.company_whitelist}
@@ -77,6 +86,7 @@ async def run_search_pipeline() -> SearchRun:
                     description=raw.description,
                     source=raw.source,
                     date_posted=raw.date_posted,
+                    country=raw.country,
                     raw_data=json.dumps(raw.raw_data),
                 )
                 session.add(job)
@@ -89,11 +99,7 @@ async def run_search_pipeline() -> SearchRun:
 
         logger.info("Run %s: %d new jobs inserted", run_id, len(new_jobs))
 
-        # Score new jobs with Ollama in batches
-        matcher = OllamaMatcher(
-            base_url=config.ollama_base_url,
-            model=config.llm.model,
-        )
+        matcher = OllamaMatcher(base_url=config.ollama_base_url, model=config.llm.model)
         batch_size = config.llm.batch_size
         threshold = config.llm.priority_threshold
 
@@ -118,7 +124,14 @@ async def run_search_pipeline() -> SearchRun:
                     session.add(db_job)
                 session.commit()
 
-        # Mark run completed
+        # Send email notifications for high-scoring new jobs
+        if config.notifications.email.enabled:
+            from .notifications import send_opportunity_notifications
+            with Session(engine) as session:
+                scored_new = [session.get(Job, j.id) for j in new_jobs]
+                scored_new = [j for j in scored_new if j is not None]
+            send_opportunity_notifications(scored_new, config)
+
         with Session(engine) as session:
             db_run = session.get(SearchRun, run_id)
             if db_run:
@@ -148,7 +161,6 @@ async def run_search_pipeline() -> SearchRun:
 
 
 def _missed_scheduled_window(last_run_time: datetime, times: list[str], tz_name: str) -> bool:
-    """Return True if any scheduled window passed since last_run_time."""
     import pytz
     tz = pytz.timezone(tz_name)
     now = datetime.now(tz)
@@ -164,7 +176,6 @@ def _missed_scheduled_window(last_run_time: datetime, times: list[str], tz_name:
 
 async def startup_catchup():
     from datetime import timedelta
-
     config = get_config()
     with Session(engine) as session:
         last_run = session.exec(
@@ -183,7 +194,7 @@ async def startup_catchup():
                 config.scheduler.timezone,
             )
             if should_run:
-                logger.info("Missed scheduled window since last run — scheduling catchup search")
+                logger.info("Missed scheduled window — scheduling catchup search")
         except Exception:
             pass
 
@@ -195,12 +206,10 @@ async def startup_catchup():
 def setup_scheduler() -> AsyncIOScheduler:
     global _scheduler
     config = get_config()
-
     _scheduler = AsyncIOScheduler(timezone=config.scheduler.timezone)
     for time_str in config.scheduler.times:
         h, m = map(int, time_str.split(":"))
         _scheduler.add_job(run_search_pipeline, "cron", hour=h, minute=m, misfire_grace_time=300)
-
     _scheduler.start()
     return _scheduler
 

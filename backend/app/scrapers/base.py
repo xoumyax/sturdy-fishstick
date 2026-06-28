@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
@@ -16,6 +16,7 @@ class RawJob:
     source: str
     date_posted: Optional[datetime]
     raw_data: dict
+    country: Optional[str] = None
 
 
 class BaseScraper(ABC):

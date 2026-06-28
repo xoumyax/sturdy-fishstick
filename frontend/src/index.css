@@ -4,12 +4,19 @@
 
 body {
   margin: 0;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  background: #f8fafc;
+  font-family: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+  /* Tropical jade sunrise ambient background */
+  background: #f0faf8;
 }
 
 #root {
   width: 100%;
   min-height: 100svh;
 }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #b8ebd8; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #7ecfaf; }

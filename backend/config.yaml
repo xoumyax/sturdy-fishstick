@@ -12,7 +12,13 @@ profile:
   resume_summary: |
     MS Computer Science student with experience in ML research.
     Strong Python, PyTorch, computer vision. Seeking summer internships in ML/AI.
-  location_preference: "United States"
+    
+  location_preference:
+    - "United States"
+    - "India"
+    - "Taiwan"
+    - "Germany"
+    - "Canada"
   remote_ok: true
   relocation_ok: false
 
@@ -20,23 +26,33 @@ search:
   sources:
     - google_jobs
     - linkedin
-  time_filter: "month"          # week | month | 3months
+  time_filter: "month"
   max_results_per_query: 20
-  extra_keywords: []
-  company_blacklist: []
-  company_whitelist: []
+  extra_keywords:
+  company_blacklist:
+  company_whitelist:
 
 scheduler:
   times:
     - "08:00"
-    - "14:00"
-    - "20:00"
+    - "12:00"
+    - "17:00"
+    - "21:00"
   timezone: "America/Chicago"
 
 llm:
   model: "phi3:mini"
   priority_threshold: 7
   batch_size: 10
+
+notifications:
+  email:
+    enabled: false
+    to: ""
+    from_addr: ""
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    score_threshold: 8
 
 app:
   port: 8001

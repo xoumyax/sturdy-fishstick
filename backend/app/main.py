@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import select
 
 from .database import create_tables
-from .routers import config_router, jobs, runs, search
+from .routers import chat, config_router, jobs, runs, search
 from .scheduler import setup_scheduler, startup_catchup, teardown_scheduler
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
@@ -55,6 +55,7 @@ app.include_router(jobs.router)
 app.include_router(runs.router)
 app.include_router(search.router)
 app.include_router(config_router.router)
+app.include_router(chat.router)
 
 
 @app.get("/health")

@@ -1,0 +1,108 @@
+## Soumyajyoti Dutta
+
+(979) 326-2896 | soumyajyotidutta23@gmail.com | github.com/xoumyax | linkedin.com/in/soumyajyotidutta
+
+Applied AI Deployment
+
+| RAG &amp; Agentic Systems | LLM Fine-Tuning &amp; Evaluation
+
+## Expertise
+
+## Core Competencies:
+
+- RAG system design: retrieval pipeline architecture, confidence-threshold anti-hallucination, live web-search fallback integration, and end-to-end deployment on local GPU infrastructure.
+- LLM fine-tuning and deployment: curriculum learning, structural reinforcement, and reward signal design across 7+ model families (140M-26B parameters); 150+ models trained, evaluated, and deployed.
+- Agentic system development: multi-tool dispatcher architecture (20 tools), 4-layer query routing, synthesizer integration, subprocess isolation, and production hardening.
+- Evaluation frameworks: custom reward metrics (lexical + syntactic + semantic), LLM-as-judge simulation, and human-curated benchmarking - applied at both training time and production quality gates.
+- Technical communication and client delivery: explaining ML systems to mixed-background audiences; client-embedded consulting experience driving stakeholder alignment across engineering and product teams.
+
+## Technical Stack:
+
+Python (PyTorch, HuggingFace Transformers, TRL, TensorFlow, scikit-learn, LightGBM, NumPy, Pandas), DeepSpeed, FSDP, DDP/NCCL, CUDA, SLURM, C++, Rust, AWS, Git, CI/CD, Django/Flask, YARA
+
+## Professional Experience
+
+## Texas A&amp;M University
+
+Research Assistant (Affiliation: Botacin's Lab)
+
+College Station, TX
+
+Spring 2024 - Present
+
+- Built and deployed an end-to-end threat intelligence agent on a local GPU cluster: 20-tool dispatcher with a 4-layer query router, RAG pipeline (curated malware knowledge base, confidence-threshold anti-hallucination, live Serper web-search fallback, clarification prompting on low-confidence queries), and Nemotron-4B synthesizer.
+- Fine-tuned 7+ LLM families (BART, T5, Nemotron 3 Nano 9B, Gemma 3 270M/1B/4B, LLaMA 3.1 8B, LLaMA 3.2 1B/3B) on 100M+ labeled examples using curriculum learning and structural reinforcement; 150+ models trained and evaluated on multi-node SLURM clusters.
+- YaraGen (USENIX Security 2026 submission in preparation):
+- ∗ Designed YaraAST hybrid tokenizer - captures YARA grammar at the atom level, reducing token space by 10 × ; trained BART-base 140M from scratch achieving 99% syntax validity and 95% rule correctness on 22,655 held-out rules.
+- ∗ Engineered Scooper (BiLSTM hex-sequence extractor with typed placeholder reinsertion) and MultiRuleGen (deterministic IR-level merger) to handle 17% of rules exceeding the 1,024-token window - raising corpus coverage from 83% to 100% .
+- ∗ Designed Brownie &amp; Puff : evaluation function (BLEU + Parsing + SAT semantics) used as training-time reward signal and production quality gate; benchmarked across T5, BART, and LLaMA families.
+- ∗ Built DeBERTa-v3 + dual CNN/Transformer char-encoder NER pipeline: 92.5% F1 across 25 IOC types on real analyst reports (CISA, NCSC, ESET, Cisco Talos, Unit 42).
+- AutoPYara (open-sourced on PyPI, ACSAC 2026 submission):
+- ∗ Biclustering-based YARA rule generation from raw malware binaries (71K Windows PE samples); +14% rule coverage, +10% threat hunting accuracy vs. AutoYara SOTA.
+
+## Cognizant Technology Solutions
+
+Junior Software Engineer (Consulting)
+
+Kolkata, India
+
+2021 - 2022
+
+- Client-facing technical consultant embedded with TJX Companies ; coordinated daily with client engineering and product stakeholders to scope, build, and deliver a logistics automation platform.
+- Optimized REST API endpoints for latency and concurrency; maintained CI/CD pipelines and led code review processes across cross-functional delivery teams.
+
+## Ambiguity-Aware Deep Research Agent | Independent Research
+
+2026
+
+- Fine-tuned Gemma-4-26B-A4B (sparse MoE: 4B active / 26B total) on 16 H100 GPUs via DeepSpeed and FSDP to build a research agent that detects ambiguous queries and asks targeted follow-up questions rather than producing broad, hallucination-prone responses.
+- Three-stage curriculum: (1) ambiguity identification, (2) confidence rating with chain-of-thought reasoning, (3) targeted follow-up question generation.
+- Evaluated via GPT-4o user-simulation framework against a 4-person human-curated ground-truth test set; results: reduced token usage, lower hallucination rate, and improved user satisfaction vs. baseline agent.
+
+## Machine Learning Malware Detection Model | 1st Place
+
+- End-to-end ML system for Windows PE classification; integrated EMBER, BODMAS, and Benign-NET datasets (2M+ samples); LightGBM/XGBoost achieving 96.2% accuracy, 0.97 F1.
+
+## HelloPentagon
+
+- Explainable ML malware defense chatbot integrating a classifier with LLM-based triage and interpretability deployed as an interactive tool for security analysts.
+
+## Teaching &amp; Outreach
+
+## Teaching Assistant (CSCE 439/704)
+
+Data Analytics for Cybersecurity
+
+Texas A&amp;M University
+
+Spring 2026
+
+- Explained clustering, supervised ML, and anomaly detection to a mixed-background cohort of graduate and advanced undergraduate students; developed assignments and provided hands-on project mentorship.
+
+## Partner &amp; Presenter
+
+## TAMU CS Day
+
+Texas A&amp;M University
+
+2024, 2025
+
+- Conducted interactive AI and cybersecurity demos for high school students - translating research-level concepts for a general audience.
+
+## Education
+
+## Texas A&amp;M University
+
+College Station, TX Spring 2024 - Present College Station, TX Fall 2022 - Fall 2023 Chennai, India
+
+Ph.D. in Computer Science - Advisor: Dr. Marcus Botacin
+
+Texas A&amp;M University
+
+M.S. in Computer Engineering
+
+SRM University
+
+B.Tech. in Electronics and Communication Engineering
+
+Fall 2017 - Spring 2021

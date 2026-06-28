@@ -102,3 +102,65 @@ def get_stats():
         "applied": applied,
         "last_run": last_run.completed_at.isoformat() if last_run else None,
     }
+
+
+@router.get("/trends")
+def get_trends():
+    from sqlalchemy import text
+    from ..database import engine
+
+    with engine.connect() as conn:
+        # Daily new jobs for last 30 days
+        daily_rows = conn.execute(text("""
+            SELECT
+                date(date_found) as day,
+                COUNT(*) as new_jobs,
+                SUM(CASE WHEN is_priority=1 THEN 1 ELSE 0 END) as priority_count,
+                SUM(CASE WHEN match_score IS NOT NULL THEN match_score ELSE 0 END) as score_sum,
+                SUM(CASE WHEN match_score IS NOT NULL THEN 1 ELSE 0 END) as scored_count
+            FROM jobs
+            WHERE is_aggregate = 0
+              AND date(date_found) >= date('now', '-30 days')
+            GROUP BY date(date_found)
+            ORDER BY day ASC
+        """)).fetchall()
+
+        # Per-country job counts
+        country_rows = conn.execute(text("""
+            SELECT
+                COALESCE(country, 'Other') as country,
+                COUNT(*) as total,
+                SUM(CASE WHEN is_priority=1 THEN 1 ELSE 0 END) as priority_count,
+                SUM(CASE WHEN status='applied' THEN 1 ELSE 0 END) as applied_count
+            FROM jobs
+            WHERE is_aggregate = 0
+            GROUP BY country
+            ORDER BY total DESC
+        """)).fetchall()
+
+    daily = [
+        {
+            "date": r[0],
+            "new_jobs": r[1],
+            "priority": r[2],
+            "avg_score": round(r[3] / r[4], 1) if r[4] > 0 else None,
+        }
+        for r in daily_rows
+    ]
+
+    countries = [
+        {"country": r[0], "total": r[1], "priority": r[2], "applied": r[3]}
+        for r in country_rows
+    ]
+
+    return {"daily": daily, "countries": countries}
+
+
+@router.get("/linkedin-status")
+def linkedin_status():
+    """Check if LinkedIn credentials are configured (without exposing them)."""
+    cfg = get_config()
+    return {
+        "configured": bool(cfg.linkedin_email and cfg.linkedin_password),
+        "email_hint": cfg.linkedin_email[:3] + "***" if cfg.linkedin_email else "",
+    }

@@ -32,7 +32,7 @@ COVER_LETTER_PROMPT = """\
 You are a professional cover letter writer. Write a concise, compelling cover letter \
 for the job below based on the candidate's profile. Use a warm but professional tone. \
 3 short paragraphs: (1) why this role, (2) relevant skills/experience, (3) closing. \
-Address it to "Hiring Manager" since we don't have a name. Do not invent facts.
+Address it to "Hiring Manager". Do not invent facts.
 
 Candidate:
 Name: {name}
@@ -45,7 +45,43 @@ Title: {title}
 Company: {company}
 Description: {description}
 
-Write only the cover letter body. No subject line, no "Dear [name]" — start with "Dear Hiring Manager,".\
+Write only the cover letter body. Start with "Dear Hiring Manager,"\
+"""
+
+RESUME_ADVICE_PROMPT = """\
+You are an expert career coach and resume reviewer. Analyze the candidate's resume(s) \
+against the job description below and give specific, actionable advice.
+
+Structure your response with these sections:
+## Add or Emphasize
+- Bullet points for skills/experiences to highlight or add
+
+## Remove or De-emphasize
+- Bullet points for things that hurt more than help for this role
+
+## Reword
+- Specific suggestions: "Change X to Y" format
+
+## Keywords to Include
+- ATS-critical keywords from the job description missing from the resume
+
+Be specific and reference actual content from both the resume and job description.
+
+---
+CANDIDATE RESUME(S):
+{resume_text}
+
+---
+JOB:
+Title: {title}
+Company: {company}
+Description: {description}
+
+---
+CANDIDATE PROFILE:
+Name: {name}
+Target positions: {positions}
+Core skills: {expertise}\
 """
 
 
@@ -68,7 +104,7 @@ class OllamaMatcher:
                 resp.raise_for_status()
             return resp.json().get("message", {}).get("content", "")
         except httpx.TimeoutException:
-            logger.warning("Ollama timed out")
+            logger.warning("Ollama timed out (timeout=%.0fs)", t)
             return None
         except (httpx.HTTPStatusError, httpx.RequestError) as e:
             logger.warning("Ollama error: %s", e)
@@ -138,9 +174,6 @@ class OllamaMatcher:
         expertise: list[str],
         resume_summary: str,
     ) -> Optional[str]:
-        desc = description or ""
-        relevant_desc = desc[:2000]  # Use more context for cover letters
-
         prompt = COVER_LETTER_PROMPT.format(
             name=name,
             positions=", ".join(positions),
@@ -148,7 +181,27 @@ class OllamaMatcher:
             resume_summary=resume_summary.strip(),
             title=title,
             company=company or "the company",
-            description=relevant_desc,
+            description=(description or "")[:2000],
         )
-
         return await self._call_ollama(prompt, timeout=60.0)
+
+    async def generate_resume_advice(
+        self,
+        title: str,
+        company: Optional[str],
+        description: Optional[str],
+        resume_text: str,
+        name: str,
+        positions: list[str],
+        expertise: list[str],
+    ) -> Optional[str]:
+        prompt = RESUME_ADVICE_PROMPT.format(
+            resume_text=resume_text[:4000],
+            title=title,
+            company=company or "the company",
+            description=(description or "")[:1500],
+            name=name,
+            positions=", ".join(positions),
+            expertise=", ".join(expertise),
+        )
+        return await self._call_ollama(prompt, timeout=90.0)

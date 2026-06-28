@@ -1,29 +1,108 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
+import { CollectionBin } from "../components/CollectionBin";
 import { FilterBar } from "../components/FilterBar";
 import { JobCard } from "../components/JobCard";
 import { StatsBar } from "../components/StatsBar";
+import { TrendCharts } from "../components/TrendCharts";
 
-const TABS = ["All", "Priority", "Applied"];
+const COUNTRY_FLAGS = {
+  "United States": "🇺🇸", "India": "🇮🇳", "Taiwan": "🇹🇼",
+  "Germany": "🇩🇪", "Canada": "🇨🇦", "United Kingdom": "🇬🇧",
+  "Remote": "🌐", "Other": "🌍", "Singapore": "🇸🇬",
+  "Japan": "🇯🇵", "Australia": "🇦🇺", "France": "🇫🇷",
+  "Netherlands": "🇳🇱", "Sweden": "🇸🇪", "Switzerland": "🇨🇭",
+  "South Korea": "🇰🇷", "China": "🇨🇳", "Hong Kong": "🇭🇰",
+};
 
-export function Dashboard() {
+const COUNTRY_GRADIENTS = [
+  "linear-gradient(135deg, #23CED9, #097C87)",
+  "linear-gradient(135deg, #FCA47C, #FF7F6B)",
+  "linear-gradient(135deg, #A1CCA6, #1A8C72)",
+  "linear-gradient(135deg, #F9D779, #FCA47C)",
+  "linear-gradient(135deg, #097C87, #1A8C72)",
+  "linear-gradient(135deg, #FFB89A, #FCA47C)",
+  "linear-gradient(135deg, #B8EDD6, #A1CCA6)",
+  "linear-gradient(135deg, #23CED9, #1A8C72)",
+];
+
+function CountryCard({ country, total, priority, applied, active, gradient, onClick }) {
+  const flag = COUNTRY_FLAGS[country] || "🌍";
+  return (
+    <button
+      onClick={onClick}
+      className={`relative rounded-2xl p-4 text-left overflow-hidden transition-all duration-200 w-full ${
+        active
+          ? "ring-3 ring-offset-2 scale-[1.03] shadow-xl"
+          : "hover:scale-[1.02] hover:shadow-lg shadow-sm"
+      }`}
+      style={{
+        background: active ? gradient : "white",
+        border: active ? "none" : "1.5px solid #e2e8f0",
+        ringColor: "#097C87",
+      }}
+    >
+      {/* Decorative blob */}
+      <div
+        className="absolute -right-3 -bottom-3 w-16 h-16 rounded-full opacity-10"
+        style={{ background: active ? "white" : "#23CED9" }}
+      />
+      <div className="flex items-start justify-between mb-2">
+        <span className="text-2xl">{flag}</span>
+        {priority > 0 && (
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+            style={{
+              background: active ? "rgba(255,255,255,0.25)" : "#FCA47C22",
+              color: active ? "white" : "#c05020",
+            }}
+          >
+            {priority} ★
+          </span>
+        )}
+      </div>
+      <p className={`text-2xl font-bold leading-none mb-1 ${active ? "text-white" : "text-slate-800"}`}>
+        {total}
+      </p>
+      <p className={`text-xs font-semibold truncate ${active ? "text-white/85" : "text-slate-600"}`}>
+        {country}
+      </p>
+      {applied > 0 && (
+        <p className={`text-[10px] mt-0.5 ${active ? "text-white/60" : "text-slate-400"}`}>
+          {applied} applied
+        </p>
+      )}
+    </button>
+  );
+}
+
+const VIEWS = ["Jobs", "Trends"];
+
+export function Dashboard({ onChat }) {
   const [jobs, setJobs] = useState([]);
-  const [tab, setTab] = useState("All");
-  const [filters, setFilters] = useState({});
+  const [view, setView] = useState("Jobs");
+  const [filters, setFilters] = useState({ score_min: 6 });
+  const [activeFilter, setActiveFilter] = useState(null); // which metric card is active
   const [loading, setLoading] = useState(false);
+  const [config, setConfig] = useState(null);
+  const [trends, setTrends] = useState(null);
+  const [activeCountry, setActiveCountry] = useState(null);
+
+  useEffect(() => {
+    api.getConfig().then(setConfig).catch(() => {});
+    api.getTrends().then(setTrends).catch(() => {});
+  }, []);
 
   const fetchJobs = useCallback(async () => {
+    if (view === "Trends") return;
     setLoading(true);
     const params = { ...filters };
-    if (tab === "Priority") params.is_priority = true;
-    if (tab === "Applied") params.status = "applied";
+    if (activeCountry) params.country = activeCountry;
     try {
       const data = await api.getJobs(params);
       setJobs(data);
-    } finally {
-      setLoading(false);
-    }
-  }, [tab, filters]);
+    } finally { setLoading(false); }
+  }, [view, filters, activeCountry]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -31,43 +110,121 @@ export function Dashboard() {
     setJobs((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
   }
 
-  return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
-      <StatsBar onTrigger={fetchJobs} />
+  function handleMetricFilter(newFilters, filterId) {
+    setActiveFilter((prev) => prev === filterId ? null : filterId);
+    if (activeFilter === filterId) {
+      setFilters({ score_min: 6 });
+    } else {
+      setFilters(newFilters);
+    }
+    setActiveCountry(null);
+  }
 
-      {/* Tab bar */}
-      <div className="flex gap-1 mb-4">
-        {TABS.map((t) => (
+  const countries = (trends?.countries || []).filter((c) => c.total > 0);
+  const multiLocation = config?.profile?.location_preference?.length > 1;
+  const showCountryCards = multiLocation && countries.length > 0;
+
+  return (
+    <div className="px-8 py-8 max-w-5xl">
+      <StatsBar
+        onFilter={(f, id) => handleMetricFilter(f, id)}
+        activeFilter={activeFilter}
+      />
+
+      {/* View switcher */}
+      <div className="flex gap-1 mb-6 p-1 w-fit rounded-xl" style={{ background: "rgba(9,124,135,0.08)" }}>
+        {VIEWS.map((v) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              tab === t ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border hover:border-indigo-400"
-            }`}
+            key={v}
+            onClick={() => setView(v)}
+            className="px-5 py-1.5 text-sm font-medium rounded-lg transition-all duration-150"
+            style={
+              view === v
+                ? { background: "white", color: "#097C87", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", fontWeight: 600 }
+                : { color: "#5d8a8f" }
+            }
           >
-            {t}
+            {v}
           </button>
         ))}
       </div>
 
-      {/* Filters — only on All tab */}
-      {tab === "All" && <FilterBar filters={filters} onChange={setFilters} />}
-
-      {/* Job list */}
-      {loading ? (
-        <p className="text-center text-slate-400 mt-8">Loading…</p>
-      ) : jobs.length === 0 ? (
-        <div className="text-center text-slate-400 mt-12">
-          <p className="text-4xl mb-2">🔍</p>
-          <p>No jobs found. Hit "Search now" to kick off a search.</p>
-        </div>
+      {view === "Trends" ? (
+        <TrendCharts />
       ) : (
-        <div>
-          <p className="text-xs text-slate-400 mb-2">{jobs.length} jobs</p>
-          {jobs.map((job) => (
-            <JobCard key={job.id} job={job} onUpdate={handleUpdate} />
-          ))}
-        </div>
+        <>
+          {/* Country filter cards */}
+          {showCountryCards && (
+            <div className="mb-7">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">By Region</p>
+                {activeCountry && (
+                  <button
+                    onClick={() => setActiveCountry(null)}
+                    className="text-xs text-brand-dark font-medium hover:underline flex items-center gap-1"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="overflow-x-auto -mx-8 px-8 pb-2" style={{ scrollbarWidth: "thin", scrollbarColor: "#b8ebd8 transparent" }}>
+                <div className="flex gap-3" style={{ width: "max-content" }}>
+                  {countries.map((c, i) => (
+                    <div key={c.country} style={{ width: 130, flexShrink: 0 }}>
+                      <CountryCard
+                        country={c.country}
+                        total={c.total}
+                        priority={c.priority}
+                        applied={c.applied}
+                        gradient={COUNTRY_GRADIENTS[i % COUNTRY_GRADIENTS.length]}
+                        active={activeCountry === c.country}
+                        onClick={() => {
+                          setActiveCountry(activeCountry === c.country ? null : c.country);
+                          setActiveFilter(null);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Collection Bin */}
+          <CollectionBin />
+
+          {/* Filter bar */}
+          <FilterBar filters={filters} onChange={(f) => { setFilters(f); setActiveFilter(null); }} />
+
+          {/* Job list */}
+          {loading ? (
+            <div className="flex items-center justify-center h-48">
+              <div className="flex items-center gap-3 text-slate-400">
+                <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 11-6.22-8.56"/></svg>
+                Loading…
+              </div>
+            </div>
+          ) : jobs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-slate-400">
+              <span className="text-5xl mb-4">🐟</span>
+              <p className="text-sm font-medium">No jobs match your current filters.</p>
+              <button
+                onClick={() => { setFilters({ score_min: 6 }); setActiveFilter(null); setActiveCountry(null); }}
+                className="mt-3 text-xs text-brand-dark font-semibold hover:underline"
+              >
+                Reset filters
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p className="text-xs text-slate-400 mb-3 font-medium">
+                {jobs.length} jobs{activeCountry ? ` · ${COUNTRY_FLAGS[activeCountry] || ""} ${activeCountry}` : ""}
+              </p>
+              {jobs.map((job) => <JobCard key={job.id} job={job} onUpdate={handleUpdate} onChat={onChat} />)}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
