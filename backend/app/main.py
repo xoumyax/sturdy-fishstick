@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import select
+
+DIST_DIR = Path(__file__).parent.parent.parent / "frontend" / "dist"
 
 from .database import create_tables
 from .routers import chat, config_router, jobs, runs, search
@@ -63,6 +68,22 @@ def health():
     return {"status": "ok"}
 
 
-@app.get("/")
-def root():
-    return {"message": "JobRadar API", "docs": "/docs", "dashboard": "http://localhost:5173"}
+# Serve built React frontend when it exists (production / ngrok mode).
+# API routes above take precedence; this catch-all handles everything else.
+if DIST_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=DIST_DIR / "assets"), name="static_assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        candidate = DIST_DIR / full_path
+        if candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(DIST_DIR / "index.html")
+
+    @app.get("/", include_in_schema=False)
+    async def serve_root():
+        return FileResponse(DIST_DIR / "index.html")
+else:
+    @app.get("/")
+    def root():
+        return {"message": "Sturdy Fishstick API", "docs": "/docs", "dashboard": "http://localhost:5173"}

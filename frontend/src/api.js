@@ -1,4 +1,8 @@
-const BASE = `http://${window.location.hostname}:8001`;
+// In dev (Vite HMR on :5173), backend is on :8001.
+// In production (FastAPI serves the built bundle), API is same-origin.
+const BASE = import.meta.env.DEV
+  ? `http://${window.location.hostname}:8001`
+  : "";
 
 async function req(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {

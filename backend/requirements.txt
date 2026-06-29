@@ -12,3 +12,4 @@ pytz==2024.2
 icalendar==5.0.13
 linkedin-api==2.3.0
 playwright>=1.40.0
+aiofiles>=23.0.0
