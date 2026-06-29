@@ -226,5 +226,19 @@ def teardown_scheduler():
 
 
 def reload_scheduler():
-    teardown_scheduler()
-    setup_scheduler()
+    """Reschedule jobs on the existing scheduler without stopping/restarting it.
+    Safe to call from a sync threadpool (e.g. config save endpoint)."""
+    global _scheduler
+    if _scheduler is None:
+        return
+    config = get_config()
+    # Remove only the cron jobs added by setup_scheduler, leave one-off jobs alone
+    for job in list(_scheduler.get_jobs()):
+        if job.id != "startup_catchup":
+            job.remove()
+    # Re-add with the new times
+    for time_str in config.scheduler.times:
+        h, m = map(int, time_str.split(":"))
+        _scheduler.add_job(run_search_pipeline, "cron", hour=h, minute=m, misfire_grace_time=300)
+    logger.info("Scheduler rescheduled with times: %s (%s)",
+                config.scheduler.times, config.scheduler.timezone)
