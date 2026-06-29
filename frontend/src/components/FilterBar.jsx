@@ -2,7 +2,7 @@ export function FilterBar({ filters, onChange }) {
   const update = (key, value) => onChange({ ...filters, [key]: value });
 
   return (
-    <div className="flex flex-wrap gap-3 items-center bg-white border border-slate-200 rounded-2xl px-4 py-3 mb-4 shadow-sm">
+    <div className="flex flex-wrap gap-2 sm:gap-3 items-center bg-white border border-slate-200 rounded-2xl px-3 sm:px-4 py-3 mb-4 shadow-sm">
       <select
         value={filters.status || ""}
         onChange={(e) => update("status", e.target.value || null)}

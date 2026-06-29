@@ -188,18 +188,18 @@ export function JobCard({ job, onUpdate, onChat, onDelete }) {
 
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-800 text-sm truncate leading-snug">{job.title}</p>
-                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  {job.company && <span className="text-xs text-slate-500">{job.company}</span>}
-                  {job.location && <span className="text-xs text-slate-400 truncate">· {job.location}</span>}
+                <div className="flex items-center gap-1.5 mt-0.5 min-w-0 overflow-hidden">
+                  {job.company && <span className="text-xs text-slate-500 truncate flex-shrink-0 max-w-[50%]">{job.company}</span>}
+                  {job.location && <span className="text-xs text-slate-400 truncate min-w-0">· {job.location}</span>}
                 </div>
               </div>
 
-              {/* Right side badges */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Right side badges — progressively shown as screen widens */}
+              <div className="flex items-center gap-1.5 flex-shrink-0">
                 <DeadlineBadge deadline={job.deadline} />
-                {job.country && <Chip color="bg-brand-teal/10 text-brand-dark">{job.country}</Chip>}
-                {job.source && <Chip>{sourceLabel[job.source] || job.source}</Chip>}
-                <span className="text-[10px] text-slate-400 w-6 text-right">{timeAgo(job.date_found)}</span>
+                {job.country && <span className="hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full font-medium bg-brand-teal/10 text-brand-dark whitespace-nowrap">{job.country}</span>}
+                {job.source && <span className="hidden md:inline-flex text-[10px] px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-500 whitespace-nowrap">{sourceLabel[job.source] || job.source}</span>}
+                <span className="hidden sm:inline text-[10px] text-slate-400 w-6 text-right">{timeAgo(job.date_found)}</span>
                 <ScoreBadge score={job.match_score} />
                 <svg className={`text-slate-300 transition-transform flex-shrink-0 ${expanded ? "rotate-180" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                 <button

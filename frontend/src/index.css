@@ -7,8 +7,8 @@ body {
   font-family: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   color: #1e293b;
   -webkit-font-smoothing: antialiased;
-  /* Tropical jade sunrise ambient background */
   background: #f0faf8;
+  transition: background 0.3s, color 0.3s;
 }
 
 #root {
@@ -20,3 +20,87 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #b8ebd8; border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: #7ecfaf; }
+
+/* ── Dark mode ──────────────────────────────────────────────── */
+.dark body {
+  background: #0c1220;
+  color: #e2e8f0;
+}
+
+.dark ::-webkit-scrollbar-thumb { background: #334155; }
+
+/* Surfaces */
+.dark .bg-white          { background-color: rgba(22, 33, 51, 0.95) !important; }
+.dark .bg-slate-50       { background-color: #0f172a !important; }
+.dark .bg-white\/90      { background-color: rgba(22, 33, 51, 0.90) !important; }
+.dark .hover\:bg-slate-50:hover { background-color: rgba(51,65,85,0.6) !important; }
+
+/* Borders */
+.dark .border-slate-200  { border-color: #2d3f55 !important; }
+.dark .border-slate-100  { border-color: #1e2d40 !important; }
+.dark .border-slate-300  { border-color: #3d5068 !important; }
+
+/* Text */
+.dark .text-slate-800    { color: #f1f5f9 !important; }
+.dark .text-slate-700    { color: #e2e8f0 !important; }
+.dark .text-slate-600    { color: #cbd5e1 !important; }
+.dark .text-slate-500    { color: #8ba3bc !important; }
+.dark .text-slate-400    { color: #7fa8c4 !important; }
+
+/* Form controls */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #0f1e2e !important;
+  border-color: #2d3f55 !important;
+  color: #e2e8f0 !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #4a6580 !important; }
+
+/* Kanban column backgrounds */
+.dark [class*="bg-brand-teal"]   { background-color: rgba(23,206,217,0.06) !important; }
+.dark [class*="bg-brand-yellow"] { background-color: rgba(249,215,121,0.06) !important; }
+.dark [class*="bg-brand-orange"] { background-color: rgba(252,164,124,0.06) !important; }
+.dark [class*="bg-brand-sage"]   { background-color: rgba(161,204,166,0.06) !important; }
+.dark .bg-slate-100\/80          { background-color: rgba(15,23,42,0.8) !important; }
+
+/* ── Fishing background animations ─────────────────────────── */
+@keyframes wave-1 {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-400px); }
+}
+@keyframes wave-2 {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-400px); }
+}
+@keyframes fish-bob {
+  0%, 100% { transform: translateY(0px);  }
+  35%       { transform: translateY(-6px); }
+  65%       { transform: translateY(3px);  }
+}
+@keyframes fish-line-sway {
+  0%, 100% { transform: rotate(0.8deg);  transform-origin: 0 0; }
+  50%       { transform: rotate(-0.8deg); transform-origin: 0 0; }
+}
+@keyframes ripple-out {
+  0%   { r: 4;  opacity: 0.55; }
+  100% { r: 26; opacity: 0;    }
+}
+@keyframes fish-swim-r {
+  from { transform: translateX(-160px); }
+  to   { transform: translateX(1610px); }
+}
+@keyframes fish-swim-l {
+  from { transform: translateX(1610px); }
+  to   { transform: translateX(-160px); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.9; }
+  50%       { opacity: 0.2; }
+}
+@keyframes cloud-drift {
+  0%   { transform: translateX(0);   }
+  50%  { transform: translateX(50px);}
+  100% { transform: translateX(0);   }
+}

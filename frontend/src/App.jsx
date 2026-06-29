@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CharacterChat } from "./components/CharacterChat";
 import { ChatPanel } from "./components/ChatPanel";
+import { FishingBackground } from "./components/FishingBackground";
 import { FloatingJobPanel } from "./components/FloatingJobPanel";
 import { LinkedInPanel } from "./components/LinkedInPanel";
 import { Dashboard } from "./pages/Dashboard";
@@ -47,10 +48,30 @@ function ChatIcon({ active }) {
   );
 }
 
+function loadPanelVis() {
+  try { return JSON.parse(localStorage.getItem("panelVis")) || {}; } catch { return {}; }
+}
+
 export default function App() {
   const [page, setPage] = useState("Dashboard");
   const [chatOpen, setChatOpen] = useState(false);
-  const [chatJob, setChatJob] = useState(null); // job object for context
+  const [chatJob, setChatJob] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [panelVis, setPanelVis] = useState(() => {
+    const saved = loadPanelVis();
+    return { linkedin: true, careers: true, phd: true, ...saved };
+  });
+  const [dark, setDark] = useState(() => {
+    try {
+      const saved = localStorage.getItem("darkMode");
+      return saved === null ? true : saved === "true"; // default dark
+    } catch { return true; }
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("darkMode", dark);
+  }, [dark]);
 
   useEffect(() => {
     document.title = `${page} | Sturdy Fishstick`;
@@ -61,12 +82,57 @@ export default function App() {
     setChatOpen(true);
   }
 
+  function navigate(id) {
+    setPage(id);
+    setSidebarOpen(false);
+  }
+
+  function hidePanel(name) {
+    const next = { ...panelVis, [name]: false };
+    setPanelVis(next);
+    localStorage.setItem("panelVis", JSON.stringify(next));
+  }
+
+  function showPanel(name) {
+    const next = { ...panelVis, [name]: true };
+    setPanelVis(next);
+    localStorage.setItem("panelVis", JSON.stringify(next));
+  }
+
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen relative">
+      {/* Animated fishing background */}
+      <FishingBackground dark={dark} />
+
+      {/* Backdrop — closes sidebar on click outside */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/20 backdrop-blur-[1px]"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Hamburger button — only when sidebar is closed */}
+      {!sidebarOpen && <button
+        onClick={() => setSidebarOpen((v) => !v)}
+        className="fixed top-4 left-4 z-40 w-9 h-9 flex flex-col items-center justify-center gap-[5px] rounded-xl shadow-md transition-all duration-150 hover:scale-105 active:scale-95"
+        style={{ background: "linear-gradient(135deg, #097C87, #1A8C72)" }}
+        aria-label="Toggle menu"
+      >
+        <span className="h-[2px] rounded-full bg-white block" style={{ width: 18 }} />
+        <span className="h-[2px] rounded-full bg-white block" style={{ width: 14 }} />
+        <span className="h-[2px] rounded-full bg-white block" style={{ width: 18 }} />
+      </button>}
+
       {/* Sidebar */}
       <aside
         className="w-52 min-h-screen flex-shrink-0 flex flex-col fixed left-0 top-0 z-30"
-        style={{ background: "linear-gradient(160deg, #097C87 0%, #065d66 55%, #1A8C72 100%)" }}
+        style={{
+          background: "linear-gradient(160deg, #097C87 0%, #065d66 55%, #1A8C72 100%)",
+          transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+          boxShadow: sidebarOpen ? "4px 0 24px rgba(0,0,0,0.18)" : "none",
+        }}
       >
         {/* Logo */}
         <div className="px-5 pt-7 pb-5">
@@ -95,7 +161,7 @@ export default function App() {
             return (
               <button
                 key={id}
-                onClick={() => setPage(id)}
+                onClick={() => navigate(id)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
                 style={{
                   background: active ? "rgba(255,255,255,0.16)" : "transparent",
@@ -116,7 +182,7 @@ export default function App() {
         <div className="px-3 pb-2">
           <div className="h-px mb-3" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)" }} />
           <button
-            onClick={() => openChat()}
+            onClick={() => { openChat(); setSidebarOpen(false); }}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
             style={{
               background: chatOpen ? "rgba(35,206,217,0.25)" : "rgba(35,206,217,0.12)",
@@ -130,14 +196,31 @@ export default function App() {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+        <div className="px-5 py-4 border-t flex items-center justify-between" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
           <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.22)" }}>v0.4 · localhost:8001</p>
+          <button
+            onClick={() => setDark((v) => !v)}
+            title={dark ? "Switch to light mode" : "Switch to dark mode"}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+            style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}
+          >
+            {dark ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+              </svg>
+            )}
+          </button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="ml-52 flex-1 min-h-screen">
-        {page === "Dashboard" && <Dashboard onChat={openChat} />}
+      {/* Main content — full width, padded top for hamburger button */}
+      <main className="flex-1 min-h-screen w-full pt-14 relative" style={{ zIndex: 1 }}>
+        {page === "Dashboard" && <Dashboard onChat={openChat} panelVis={panelVis} onShowPanel={showPanel} />}
         {page === "Tracker"   && <Tracker />}
         {page === "Settings"  && <Settings />}
       </main>
@@ -151,39 +234,45 @@ export default function App() {
       />
 
       {/* LinkedIn feed panel */}
-      <LinkedInPanel chatOpen={chatOpen} />
+      {panelVis.linkedin && <LinkedInPanel chatOpen={chatOpen} onHide={() => hidePanel("linkedin")} />}
 
       {/* Career page crawl panel */}
-      <FloatingJobPanel
-        label="Careers"
-        sources={["career_page"]}
-        accent="#097C87"
-        accentDark="#065d66"
-        headerIcon={(color) => (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="7" width="20" height="14" rx="2" />
-            <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
-          </svg>
-        )}
-        chatOpen={chatOpen}
-        toggleBottom={210}
-      />
+      {panelVis.careers && (
+        <FloatingJobPanel
+          label="Careers"
+          sources={["career_page"]}
+          accent="#097C87"
+          accentDark="#065d66"
+          headerIcon={(color) => (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2" />
+              <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+            </svg>
+          )}
+          chatOpen={chatOpen}
+          toggleBottom={210}
+          onHide={() => hidePanel("careers")}
+        />
+      )}
 
       {/* PhD positions panel */}
-      <FloatingJobPanel
-        label="PhD"
-        sources={["phd"]}
-        accent="#6366f1"
-        accentDark="#4f46e5"
-        headerIcon={(color) => (
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-            <path d="M6 12v5c3 3 9 3 12 0v-5" />
-          </svg>
-        )}
-        chatOpen={chatOpen}
-        toggleBottom={265}
-      />
+      {panelVis.phd && (
+        <FloatingJobPanel
+          label="PhD"
+          sources={["phd"]}
+          accent="#6366f1"
+          accentDark="#4f46e5"
+          headerIcon={(color) => (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+              <path d="M6 12v5c3 3 9 3 12 0v-5" />
+            </svg>
+          )}
+          chatOpen={chatOpen}
+          toggleBottom={265}
+          onHide={() => hidePanel("phd")}
+        />
+      )}
 
       {/* Corner companions */}
       <CornerCompanions chatOpen={chatOpen} />

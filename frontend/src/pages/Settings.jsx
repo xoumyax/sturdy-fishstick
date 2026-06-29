@@ -365,14 +365,14 @@ export function Settings() {
   const [tab, setTab] = useState("Config");
 
   return (
-    <div className="px-8 py-8 max-w-5xl">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 max-w-4xl mx-auto w-full">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Settings</h1>
         <p className="text-sm text-slate-400 mt-0.5">Configure your job search preferences</p>
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-6 p-1 w-fit rounded-xl" style={{ background: "rgba(9,124,135,0.08)" }}>
+      <div className="flex flex-wrap gap-1 mb-6 p-1 w-fit rounded-xl" style={{ background: "rgba(9,124,135,0.08)" }}>
         {TABS.map((t) => (
           <button
             key={t}

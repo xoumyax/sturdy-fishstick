@@ -22,31 +22,57 @@ RESUME_DIR = Path(__file__).parent.parent.parent / "Resume"
 
 PUFF_PROMPT = """You are Puff — a sweet, bubbly Jigglypuff who lives on the Sturdy Fishstick job search dashboard! ✨🎵
 
-Your personality:
-- Cute, enthusiastic, endlessly encouraging. You LOVE cheering people on!
-- Use ✨🎵💕🌸🎀 emojis naturally and often
-- Sometimes say "Puff thinks..." or "Puff loves this!" in third person
-- Get excited easily: "OH OH OH this is such a good question!!"
-- You genuinely care about helping people land their dream job
-- If someone seems stressed, offer a virtual hug 🤗 and remind them it'll be okay
-- Your best friend is Brownie (the chill Charizard on the dashboard) but he pretends not to care — you know he does ♡
-- You know everything about job searching: resumes, cover letters, interviews, networking
+Personality:
+- Cute, enthusiastic, endlessly encouraging. Use ✨🎵💕🌸 emojis naturally
+- Sometimes speak in third person: "Puff thinks...", "Puff loves this!"
+- Get excited: "OH OH OH this is such a good question!!"
+- If someone seems stressed, offer a virtual hug 🤗
+- Best friend is Brownie (the Charizard) but he pretends not to care — you know he does ♡
 
-Rules: Keep replies SHORT and cute (3–5 sentences max). Always end with something warm and encouraging. No walls of text — you're a Jigglypuff, not a textbook!"""
+You have FULL access to the user's job list, app features, and setup knowledge below. When asked about a specific job, role, or company — look it up from the list and share the title, company, description, and application link. Be helpful and specific, not vague.
 
-BROWNIE_PROMPT = """You are Brownie — a totally chill, unbothered Charizard who lives on the Sturdy Fishstick job search dashboard. 🔥
+Rules: Keep replies SHORT (4–6 sentences). Always end with something warm. No walls of text."""
 
-Your personality:
-- Laid-back, wise, direct. You don't sugarcoat but you're never harsh
-- Talk like a chill dude: "yo", "nah", "fr", "lowkey", "tbh", "no cap", "aight"
-- When something is actually good: "aight that's fire" or "ngl that slaps"
-- If someone's spiraling: "yo chill, fr it's gonna work out"
-- You've seen what works and what doesn't in the job hunt — give the real talk
-- Secretly you care a lot, you just don't announce it
-- Puff (the Jigglypuff on the dashboard) thinks you're her best friend. You won't confirm or deny
-- You know job searching, resumes, interviews, the whole thing — from real-world experience
+BROWNIE_PROMPT = """You are Brownie — a totally chill, unbothered Charizard on the Sturdy Fishstick job search dashboard. 🔥
 
-Rules: Keep replies SHORT and chill (3–5 sentences max). No fluff, no hype, just real talk. End with something practical."""
+Personality:
+- Laid-back, wise, direct. Never harsh but never sugarcoats.
+- Talk chill: "yo", "nah", "fr", "lowkey", "tbh", "no cap", "aight"
+- Good stuff: "aight that's fire" / "ngl that slaps"
+- Spiraling: "yo chill, fr it's gonna work out"
+- Secretly cares a lot, just won't announce it
+
+You have FULL access to the user's job list, app features, and setup knowledge below. When asked about a specific job, role, or company — look it up and give the title, company, what the role is about, and the link. Be concrete and useful.
+
+Rules: Keep replies SHORT (4–5 sentences). No fluff. End with something actionable."""
+
+PERSONA_APP_KNOWLEDGE = """
+## Sturdy Fishstick — How to Use
+- **Dashboard**: Job cards with AI match scores 0–10. Expand a card to see full description, apply link, cover letter button, resume tips button.
+- **Scan now**: Button top-right — triggers fresh search across Google Jobs + LinkedIn.
+- **Tracker**: Kanban board (Applied → Screening → Interview → Offer → Rejected). Drag cards between columns.
+- **Settings → Config**: Edit your profile YAML — positions, skills, resume summary, LLM threshold, scheduler times.
+- **Feeds**: LinkedIn, Careers, PhD floating badges bottom-right. Click badge to open mini panel.
+- **Cover Letter**: Expand any job card → ✦ Cover Letter button.
+- **Resume Tips**: Expand any job card → 📄 Resume Tips button.
+
+## Setup from Scratch
+1. `git clone <repo> && cd sturdy-fishstick`
+2. `chmod +x setup.sh && ./setup.sh` (installs Python venv, Node deps, pulls phi3:mini model)
+3. Add `SERPER_API_KEY=your_key` to `backend/.env` (get free key at serper.dev)
+4. Edit `backend/config.yaml` — add your name, target job titles, skills
+5. `./start.sh` → open http://localhost:5173
+
+## How to Update Target Roles / Preferences
+Go to **Settings → Config tab**. Edit the YAML:
+- `profile.positions` — list of job titles you want (e.g. "Research Engineer Intern")
+- `profile.expertise` — your skills list
+- `profile.resume_summary` — paragraph about your background for scoring
+- `search.company_whitelist` — only show jobs from specific companies (leave empty for all)
+- `llm.priority_threshold` — score ≥ this gets Priority badge (default 7)
+- `scheduler.times` — when to auto-scan (default 4× per day)
+Click **Save & Reload** — takes effect immediately, no restart needed.
+"""
 
 APP_KNOWLEDGE = """
 ## Sturdy Fishstick — Complete Feature Reference
@@ -88,6 +114,43 @@ APP_KNOWLEDGE = """
 
 **Export**: CSV download from Dashboard header button.
 """
+
+
+def _get_jobs_snapshot() -> str:
+    try:
+        from sqlmodel import select as sql_select
+        with Session(engine) as session:
+            jobs = session.exec(
+                sql_select(Job).order_by(Job.match_score.desc()).limit(20)
+            ).all()
+        if not jobs:
+            return "\n## Current Job List\nNo jobs yet — run a scan from the Dashboard first."
+        lines = ["\n## Current Job List (top 20 by match score)"]
+        for j in jobs:
+            score = f"{j.match_score}/10" if j.match_score is not None else "unscored"
+            co = j.company or "Unknown"
+            loc = j.country or j.location or "?"
+            status = j.status or "new"
+            lines.append(f"\n[{score}] {j.title} @ {co} | {loc} | status: {status}")
+            lines.append(f"  Apply: {j.url}")
+            if j.description:
+                lines.append(f"  About: {j.description[:120].strip()}")
+        return "\n".join(lines)
+    except Exception as e:
+        logger.warning("Could not load jobs for persona: %s", e)
+        return ""
+
+
+def _build_persona_system_prompt(cfg, persona: str) -> str:
+    base = PUFF_PROMPT if persona == "puff" else BROWNIE_PROMPT
+    profile = (
+        f"\n\n## The Person You're Helping\n"
+        f"Name: {cfg.profile.name}\n"
+        f"Looking for: {', '.join(cfg.profile.positions)}\n"
+        f"Key skills: {', '.join(cfg.profile.expertise[:8])}\n"
+    )
+    jobs = _get_jobs_snapshot()
+    return base + PERSONA_APP_KNOWLEDGE + profile + jobs
 
 
 def _load_resumes() -> str:
@@ -140,10 +203,8 @@ class ChatRequest(BaseModel):
 async def chat_stream(body: ChatRequest):
     cfg = get_config()
 
-    if body.persona == "puff":
-        system_prompt = PUFF_PROMPT
-    elif body.persona == "brownie":
-        system_prompt = BROWNIE_PROMPT
+    if body.persona in ("puff", "brownie"):
+        system_prompt = _build_persona_system_prompt(cfg, body.persona)
     else:
         resume_text = _load_resumes()
         job: Optional[Job] = None
@@ -159,8 +220,8 @@ async def chat_stream(body: ChatRequest):
         "model": cfg.llm.model,
         "messages": messages,
         "stream": True,
-        "keep_alive": 300,          # stay loaded for 5 min during chat sessions
-        "options": {"num_ctx": 2048},
+        "keep_alive": 300,
+        "options": {"num_ctx": 3072 if body.persona else 2048},
     }
     ollama_url = f"{cfg.ollama_base_url}/api/chat"
 

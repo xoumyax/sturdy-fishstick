@@ -14,7 +14,7 @@ function MetricCard({ label, value, sub, gradient, textColor, iconBg, icon, onCl
   return (
     <button
       onClick={onClick}
-      className={`relative rounded-2xl p-5 flex items-center gap-4 text-left w-full transition-all duration-200 overflow-hidden group ${
+      className={`relative rounded-2xl p-3 sm:p-5 flex items-center gap-3 sm:gap-4 text-left w-full transition-all duration-200 overflow-hidden group ${
         active ? "ring-2 ring-white/60 scale-[1.02] shadow-xl" : "hover:scale-[1.01] hover:shadow-lg shadow-md"
       }`}
       style={{ background: gradient, color: textColor }}
@@ -52,14 +52,14 @@ export function StatsBar({ onFilter, activeFilter }) {
   return (
     <div className="mb-8">
       {/* Page header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard</h1>
           <p className="text-xs text-slate-400 mt-0.5">
             Last scan: <span className="text-slate-500 font-medium">{stats ? timeAgo(stats.last_run) : "–"}</span>
           </p>
         </div>
-        <div className="flex gap-2.5">
+        <div className="flex gap-2.5 flex-wrap">
           <a
             href={api.exportCsvUrl()}
             download="sturdy_fishstick_export.csv"
@@ -94,7 +94,7 @@ export function StatsBar({ onFilter, activeFilter }) {
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <MetricCard
           label="New today"
           value={stats?.new_today ?? "–"}

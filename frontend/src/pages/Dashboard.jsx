@@ -34,13 +34,9 @@ function CountryCard({ country, total, priority, applied, active, gradient, onCl
       className={`relative rounded-2xl p-4 text-left overflow-hidden transition-all duration-200 w-full ${
         active
           ? "ring-3 ring-offset-2 scale-[1.03] shadow-xl"
-          : "hover:scale-[1.02] hover:shadow-lg shadow-sm"
+          : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:scale-[1.02] hover:shadow-lg shadow-sm"
       }`}
-      style={{
-        background: active ? gradient : "white",
-        border: active ? "none" : "1.5px solid #e2e8f0",
-        ringColor: "#097C87",
-      }}
+      style={active ? { background: gradient } : {}}
     >
       {/* Decorative blob */}
       <div
@@ -78,7 +74,41 @@ function CountryCard({ country, total, priority, applied, active, gradient, onCl
 
 const VIEWS = ["Jobs", "Trends"];
 
-export function Dashboard({ onChat }) {
+const PANEL_TABS = [
+  {
+    key: "linkedin",
+    label: "LinkedIn",
+    color: "#0077b5",
+    icon: (
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/>
+        <circle cx="4" cy="4" r="2"/>
+      </svg>
+    ),
+  },
+  {
+    key: "careers",
+    label: "Careers",
+    color: "#097C87",
+    icon: (
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
+      </svg>
+    ),
+  },
+  {
+    key: "phd",
+    label: "PhD",
+    color: "#6366f1",
+    icon: (
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
+      </svg>
+    ),
+  },
+];
+
+export function Dashboard({ onChat, panelVis, onShowPanel }) {
   const [jobs, setJobs] = useState([]);
   const [view, setView] = useState("Jobs");
   const [filters, setFilters] = useState({ score_min: 6 });
@@ -141,7 +171,7 @@ export function Dashboard({ onChat }) {
   }
 
   return (
-    <div className="px-8 py-8 max-w-7xl">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 max-w-6xl mx-auto w-full">
       <StatsBar
         onFilter={(f, id) => handleMetricFilter(f, id)}
         activeFilter={activeFilter}
@@ -169,8 +199,8 @@ export function Dashboard({ onChat }) {
         <TrendCharts />
       ) : (
         <>
-          {/* Crawl buttons */}
-          <div className="flex items-center gap-2 mb-5">
+          {/* Crawl buttons + hidden panel tabs */}
+          <div className="flex items-center gap-2 mb-5 flex-wrap">
             <button
               onClick={() => triggerCrawl(api.crawlCareers, "Career crawl")}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-[1.02]"
@@ -187,6 +217,28 @@ export function Dashboard({ onChat }) {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
               Crawl PhD
             </button>
+
+            {/* Hidden panel restore tabs */}
+            {panelVis && PANEL_TABS.some((t) => !panelVis[t.key]) && (
+              <div className="h-4 w-px bg-slate-200 mx-0.5" />
+            )}
+            {panelVis && PANEL_TABS.filter((t) => !panelVis[t.key]).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => onShowPanel?.(tab.key)}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-[1.02]"
+                style={{
+                  border: `1.5px solid ${tab.color}55`,
+                  color: tab.color,
+                  background: tab.color + "0d",
+                }}
+                title={`Show ${tab.label} feed`}
+              >
+                {tab.icon}
+                {tab.label} Feed
+              </button>
+            ))}
+
             {crawlMsg && (
               <span className="text-xs text-slate-500 ml-1 animate-pulse">{crawlMsg}</span>
             )}

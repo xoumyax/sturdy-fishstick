@@ -128,7 +128,7 @@ function ExpandedModal({ jobs, onClose, label, accent, accentDark, headerIcon })
   );
 }
 
-export function FloatingJobPanel({ label, sources, accent, accentDark, headerIcon, chatOpen, toggleBottom }) {
+export function FloatingJobPanel({ label, sources, accent, accentDark, headerIcon, chatOpen, toggleBottom, onHide }) {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [jobs, setJobs] = useState([]);
@@ -154,41 +154,50 @@ export function FloatingJobPanel({ label, sources, accent, accentDark, headerIco
 
   return (
     <>
-      {/* Toggle badge */}
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="fixed flex items-center gap-1.5 rounded-2xl px-3 py-2 shadow-lg hover:scale-105"
-        style={{
-          right: rightOffset,
-          bottom: toggleBottom,
-          zIndex: 50,
-          background: open ? accent : "white",
-          border: `1.5px solid ${accent}44`,
-          color: open ? "white" : accent,
-          transition: "right 0.3s ease, background 0.15s, transform 0.15s",
-        }}
-        title={label}
+      {/* Toggle badge wrapper — group for hide button */}
+      <div
+        className="fixed group/badge"
+        style={{ right: rightOffset, bottom: toggleBottom, zIndex: 50, transition: "right 0.3s ease" }}
       >
-        {headerIcon(open ? "white" : accent)}
-        <span className="text-[11px] font-bold">{label}</span>
-        {jobs.length > 0 && !open && (
-          <span
-            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-            style={{ background: accent + "22", color: accent }}
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-1.5 rounded-2xl px-3 py-2 shadow-lg hover:scale-105"
+          style={{
+            background: open ? accent : "white",
+            border: `1.5px solid ${accent}44`,
+            color: open ? "white" : accent,
+            transition: "background 0.15s, transform 0.15s",
+          }}
+          title={label}
+        >
+          {headerIcon(open ? "white" : accent)}
+          <span className="text-[11px] font-bold">{label}</span>
+          {jobs.length > 0 && !open && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: accent + "22", color: accent }}>
+              {jobs.length}
+            </span>
+          )}
+          {jobs.length === 0 && !open && <span className="text-[9px] opacity-60">feed</span>}
+        </button>
+        {/* Hide button — appears on hover */}
+        {onHide && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setOpen(false); onHide(); }}
+            title="Hide panel"
+            className="absolute -top-2 -right-2 w-4 h-4 rounded-full flex items-center justify-center opacity-0 group-hover/badge:opacity-100 transition-opacity shadow-sm"
+            style={{ background: "#64748b", color: "white", fontSize: 9 }}
           >
-            {jobs.length}
-          </span>
+            ×
+          </button>
         )}
-        {jobs.length === 0 && !open && <span className="text-[9px] opacity-60">feed</span>}
-      </button>
+      </div>
 
       {/* Mini panel */}
       {open && (
         <div
           className="fixed flex flex-col rounded-3xl overflow-hidden"
           style={{
-            right: rightOffset,
-            bottom: panelBottom,
+            right: rightOffset, bottom: panelBottom,
             width: 284,
             maxHeight: 380,
             zIndex: 50,

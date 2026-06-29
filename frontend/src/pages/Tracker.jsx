@@ -105,8 +105,8 @@ export function Tracker() {
   }
 
   return (
-    <div className="px-8 py-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 max-w-6xl mx-auto w-full">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Tracker</h1>
           <p className="text-sm text-slate-400 mt-0.5">{jobs.length} active applications</p>

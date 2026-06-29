@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const BASE = "http://localhost:8001";
+const BASE = import.meta.env.DEV ? `http://${window.location.hostname}:8001` : "";
 
 async function* streamPersona(messages, persona) {
   const resp = await fetch(`${BASE}/chat/stream`, {
@@ -86,7 +86,7 @@ export function CharacterChat({ persona, open, onClose, bottomOffset }) {
     setBusy(true);
     const history = [...messages, { role: "user", content: text }]
       .filter((m) => m.content)
-      .slice(-12)
+      .slice(-16)
       .map(({ role, content }) => ({ role, content }));
     try {
       let acc = "";
@@ -163,8 +163,8 @@ export function CharacterChat({ persona, open, onClose, bottomOffset }) {
       {messages.length <= 2 && (
         <div className="px-3 pb-2 flex flex-col gap-1.5 flex-shrink-0">
           {(persona === "puff"
-            ? ["How do I make my resume cuter? ✨", "Am I gonna get a job? 🌸", "Help me write a cover letter! 💕"]
-            : ["yo which job should I apply to first", "my resume any good?", "how do interviews usually go"]
+            ? ["Show me my top jobs! ✨", "How do I set this app up? 💕", "How do I update my target roles? 🌸"]
+            : ["which job should I apply to first", "how do I update my preferences", "how do I set this app up from scratch"]
           ).map((p) => (
             <button key={p} onClick={() => send(p)}
               className="text-left text-[11px] px-3 py-1.5 rounded-xl border transition-colors truncate"
