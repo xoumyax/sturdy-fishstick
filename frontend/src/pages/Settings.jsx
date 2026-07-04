@@ -354,6 +354,22 @@ function CareerWatchTab() {
               <input type="file" accept=".json" className="hidden" onChange={handleFile} />
             </label>
             <button
+              onClick={async () => {
+                try {
+                  await api.discoverCompanies();
+                  setMsg({ type: "success", text: "Discovery started (≤6 Serper credits) — new companies land in a 'Discovered' category. Reload this tab in ~30s." });
+                } catch (e) {
+                  setMsg({ type: "error", text: "Discovery failed: " + e.message });
+                }
+                setTimeout(() => setMsg(null), 8000);
+              }}
+              className="px-3 py-1.5 text-xs font-semibold rounded-xl border transition-colors"
+              style={{ borderColor: "#F9D77999", color: "#a07010", background: "#F9D7791a" }}
+              title="Find companies hiring for your profile on Greenhouse/Lever/Ashby (uses a few Serper credits)"
+            >
+              Discover
+            </button>
+            <button
               onClick={handleCrawl}
               disabled={crawling || !watchData}
               className="px-3 py-1.5 text-xs font-semibold rounded-xl text-white disabled:opacity-50 transition-all"
@@ -437,7 +453,7 @@ export function Settings({ mode = "careers" }) {
   return (
     <div className="px-4 sm:px-6 lg:px-10 py-6 max-w-4xl mx-auto w-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Settings</h1>
+        <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Settings</h1>
         <p className="text-sm text-slate-400 mt-0.5">Configure your job search preferences</p>
       </div>
 

@@ -42,20 +42,52 @@ def _extract(path: Path) -> str:
     return text
 
 
+def _bundle(files) -> str:
+    parts = []
+    for f in files:
+        text = _extract(f).strip()
+        if text:
+            parts.append(f"--- {f.name} ---\n{text}")
+    return "\n\n".join(parts)
+
+
 def load_resumes(mode: str = "careers") -> str:
+    tag = "phd" if mode == "phd" else "career"
+    other = "career" if mode == "phd" else "phd"
+
+    # 1) Curated text files in backend/Resume tagged with CAREER / PHD in the
+    #    filename win — cleaner than PDF extraction.
+    if LEGACY_DIR.exists():
+        tagged = sorted(
+            p for p in LEGACY_DIR.iterdir()
+            if p.is_file() and p.suffix.lower() in (".txt", ".md")
+            and tag in p.name.lower()
+        )
+        if tagged:
+            out = _bundle(tagged)
+            if out:
+                return out
+
+    # 2) Mode-specific PDF directory at the project root.
     subdir = "PhD" if mode == "phd" else "Careers"
-    for directory in (RESUME_BASE / subdir, LEGACY_DIR):
-        if not directory.exists():
-            continue
+    mode_dir = RESUME_BASE / subdir
+    if mode_dir.exists():
         files = sorted(
-            p for p in directory.iterdir()
+            p for p in mode_dir.iterdir()
             if p.is_file() and p.suffix.lower() in (".pdf", ".txt", ".md")
         )
-        parts = []
-        for f in files:
-            text = _extract(f).strip()
-            if text:
-                parts.append(f"--- {f.name} ---\n{text}")
-        if parts:
-            return "\n\n".join(parts)
+        out = _bundle(files)
+        if out:
+            return out
+
+    # 3) Last resort: any untagged legacy text files (excluding the other mode's).
+    if LEGACY_DIR.exists():
+        rest = sorted(
+            p for p in LEGACY_DIR.iterdir()
+            if p.is_file() and p.suffix.lower() in (".txt", ".md")
+            and other not in p.name.lower()
+        )
+        out = _bundle(rest)
+        if out:
+            return out
     return ""

@@ -6,8 +6,12 @@
 >
 > Status legend: `[ ]` todo · `[x]` done · `[~]` partially done / needs follow-up
 >
-> Last updated: 2026-07-04 — Phases 0–4 complete; full re-score running in background
-> (commits: b44cb95, 53c6bb7, ea773f0, 0ca269c, f190c22, + Phase 4 commit)
+> Last updated: 2026-07-04 — **ALL PHASES (0–6) COMPLETE.**
+> (commits: b44cb95, 53c6bb7, ea773f0, 0ca269c, f190c22, cd077f7, + Phase 5/6 commits)
+>
+> ⚠️ Open loose ends: (1) re-score was interrupted with ~700 jobs unscored — start the app
+> (`./start.sh`) and hit "Score jobs (N)"; (2) careers LinkedIn-posts query needs loosening;
+> (3) girlfriend's phd_profile specs pending; (4) check priority_threshold after re-score.
 
 ---
 
@@ -152,27 +156,39 @@ scoring everything 2 (including a perfect synthetic match). What shipped instead
 
 ---
 
-## Phase 5 — Dashboard aesthetics (#12)
+## Phase 5 — Dashboard aesthetics (#12) ✅ 2026-07-04
 
-- [ ] Rebuild `FishingBackground` with layered depth: gradient sky that shifts with light/dark, 3 parallax wave layers (CSS transforms, GPU-cheap), drifting fish at different depths/speeds, occasional bubbles; respect `prefers-reduced-motion`.
-- [ ] Per-mode ambient theme: teal/sea for My Careers, indigo/night-sky (or "deep sea") for PhD — background + accent colors switch with the mode toggle (smooth transition).
-- [ ] Polish pass: consistent card shadows/radii, dark-mode contrast audit on Dashboard cards (several `text-slate-800` on dark backgrounds), micro-animations on card hover/expand (Tailwind transitions, no new deps).
-- Files: `frontend/src/components/FishingBackground.jsx`, `tailwind.config.js`, Dashboard components
+- [x] `FishingBackground` rebuilt: 3 parallax wave layers, rising bubbles, swaying kelp bed,
+  a drifting jellyfish, a tiny fish school, denser stars in dark mode; `prefers-reduced-motion`
+  disables all background animation.
+- [x] Per-mode ambient theme: teal tropical sea (My Careers) vs indigo deep-sea/night-sky (PhD)
+  — sky, water, waves, fish palette and kelp all switch with the mode toggle (fade transition).
+- [x] Dark-mode contrast fixes: page h1s (Dashboard/Tracker/Settings) and CountryCard
+  number/name now have `dark:` variants.
 
 ---
 
 ## Phase 6 — Advanced discovery (#13)
 
-### 6.1 Careers: broader company coverage
-- [ ] Extend `_DOMAIN_ATS` + detection to more free ATS APIs: **Ashby** (`api.ashbyhq.com/posting-api/job-board/<org>`), **Workable** (`apply.workable.com/api/v1/widget/accounts/<org>`), **SmartRecruiters** (`api.smartrecruiters.com/v1/companies/<org>/postings`), **Recruitee** (`<org>.recruitee.com/api/offers`). All free, no key.
-- [ ] One-time company auto-discovery from profile (uses ~20 Serper credits, run once): for each expertise cluster, find companies' ATS boards (`site:boards.greenhouse.io <keyword>`, `site:jobs.lever.co ...`, `site:jobs.ashbyhq.com ...`) → merge into `company_careers.json` watchlist. (`company_careers.json` exists at repo root — upload it via Settings → Career Watch first.)
-- [ ] Relevance filter (`_is_relevant`) tune-up so the wider net doesn't flood the DB.
+### 6.1 Careers: broader company coverage ✅ 2026-07-04
+- [x] Four new free ATS APIs in the career crawler: **Ashby**, **Workable**, **SmartRecruiters**,
+  **Recruitee** — URL-pattern detection + JSON crawlers. Verified live (Ashby/openai → 724
+  postings; the existing `_is_relevant` filter trims to intern-level matches).
+- [x] `POST /search/discover-companies` + **Discover** button in Settings → Career Watch:
+  finds boards hiring for profile keywords via ≤6 budget-capped Serper queries, merges new
+  companies into the watchlist under "Discovered".
+- [~] `_is_relevant` kept as-is for now — revisit if the wider net floods the DB.
 
-### 6.2 PhD: FindAPhD + academic boards
-- [ ] `backend/app/scrapers/phd_boards.py`: **FindAPhD** scraper — crawl `findaphd.com/phds/?Keywords=<kw>` result pages (httpx + regex/bs4; Playwright fallback exists if needed), parse title/university/deadline/link → `source='phd'`.
-- [ ] Add 1–2 similar boards behind the same interface: **jobs.ac.uk** (UK, clean HTML), **EURAXESS** (EU, has search API-ish endpoints), **academicpositions.com**, **PhDportal** — pick the two easiest to parse reliably.
-- [ ] PhD profile stays config-driven: girlfriend's specs go into `phd_profile:` via Settings → PhD Profile (user will update — placeholders fine until then). Keywords for board queries come from `phd_profile.positions/expertise`.
-- [ ] Wire into "Crawl PhD" button + daily run (free, no Serper cost).
+### 6.2 PhD: academic boards ✅ 2026-07-04 (FindAPhD not possible)
+- [x] `scrapers/phd_boards.py`: **EURAXESS** + **jobs.ac.uk** scrapers (httpx + bs4, free).
+  **FindAPhD, academicpositions.com, and scholarshipdb.net are Cloudflare-walled** (verified:
+  challenge pages even via headless Chromium) — skipped rather than building bot evasion.
+- [x] Boards' keyword params are unreliable server-side → results filtered to doctoral-titled
+  positions locally; the LLM scorer judges topical fit against phd_profile.
+- [x] Wired into "Crawl PhD" (button + endpoint); keywords come from `phd_profile.expertise`.
+- [x] Resume update: `backend/Resume/*___CAREER.txt` / `*___PHD.txt` (user-curated text) now
+  take priority over PDF extraction in `resumes.py`; her PhD CV drives PhD mode.
+- [ ] Girlfriend's exact `phd_profile:` specs — user updates via Settings → PhD Profile.
 
 ---
 

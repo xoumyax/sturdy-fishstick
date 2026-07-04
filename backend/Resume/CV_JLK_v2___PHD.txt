@@ -1,0 +1,144 @@
+## Jen-Li Kao
+
++1(979) 229-6446 | kaojenli@gmail.com | github.com/Dino-Boooo | linkedin.com/in/jenlikao/ Medical Imaging Systems | Computer Vision &amp; ML | Embedded Signal Processing
+
+## EDUCATION
+
+## TEXAS A&amp;M UNIVERSITY (TAMU)
+
+## MS in Electrical and Computer Engineering
+
+- Awards: Graduate Merit Scholarship in Dept of ECE.
+- Relevant Coursework: Digital Image Processing &amp; Computer Vision, Pattern Recognition, Data Mining and Analysis, Analysis of Algorithms, MR Engineering, Advanced US Imaging Techniques, Bioelectromagnetism, Algorithm in Structural Bioinformatics
+
+## CHANG GUNG UNIVERSITY (CGU)
+
+MS in Computer Science and Information Taoyuan, Taiwan Jul 2022
+
+- Thesis: Breast Tumor Detection Using Multi-Channel Millimeter-wave 3D Imaging Technology: A Preliminary Study
+
+## NATIONAL DONG HWA UNIVERSITY (NDHU)
+
+BS in Computer Science and Information
+
+## PUBLICATION
+
+Conference Paper:
+
+J. -L. Kao and Y. -P. Chao, "Breast Tumor Detection Using Multi-Channel 62-69 GHz Millimeter-wave 3D Imaging  Technology," 2022  IEEE  4th  Eurasia  Conference  on  Biomedical  Engineering,  Healthcare  and Sustainability (ECBIOS), 2022, pp. 16-19, DOI: 10.1109/ECBIOS54627.2022.9945009
+
+## CONFERENCE
+
+The 16th Symposium of Medical Imaging and Radiological Sciences (SMIRS)., Taoyuan, Taiwan, 22 Oct 2022
+
+- Presentation, " Breast Tumor Detection Using Multi-Channel Millimeter-wave 3D Imaging Technology: A Preliminary Study ." - Honorable Mention Award
+
+## RESEARCH EXPERIENCE
+
+## APPLIED MACHINE LEARNING RESEARCH, TAMU
+
+Research Co-op / Soumyajyoti Dutta (PhD Candidate, TAMU CSE)
+
+Project: Automatic Sigma Rule Generation Using Language and Vision Models
+
+- Developed  an  end-to-end  framework  for  automated  Sigma  rule  generation  by  integrating LLM reasoning , AST-based structural parsing , and multimodal security inputs .
+- Designed a language-to-AST parsing pipeline to  evaluate  rule  consistency,  structural  complexity (Halstead and Cyclomatic), and syntactic correctness across varied model architectures.
+- Prototyping a system that interprets heterogeneous security artifacts-such as log excerpts and visual indicators-and converts them into machine-interpretable Sigma rule s.
+- Advancing to model training and performance evaluation, benchmarking natural-language and ASTguided models on the constructed dataset.
+
+## MEDICAL IMAGING PROCESSING AND COMPUTING VISION LAB, CGU Taoyuan, Taiwan Research Assistant /Advisor: Prof. Yi-Ping Chao Sept 2020 - May 2022
+
+Project: Breast Tumor Detection Using Multi-Channel Millimeter-wave 3D Imaging Technology
+
+- Developed a breast tumor detection system using millimeter-wave imaging and computer vision techniques to enhance high-resolution, non-invasive cancer imaging .
+- Designed synthetic 3D phantoms for  breast,  tumor,  and  skin-layer  phantoms  based  on  referenced studies to simulate real-world imaging conditions.
+- Conducted 6 experiments to evaluate system performance, including detection depth, minimum tumor size, and multi-angle imaging accuracy to enhance 3D reconstruction quality .
+- Implemented noise-reduction and beamforming methods , including averaging and Delay-and-Sum (DAS), to reconstruct enhanced 2D/3D images and improve overall spatial resolution .
+
+Hualien, Taiwan Jun 2018
+
+College Station, TX Sept 2023 - May 2025
+
+College Station, TX
+
+May 2025 - Present
+
+## WORK EXPERIENCE
+
+## MEDICAL IMAGING PROCESSING AND COMPUTING VISION LAB, CGU
+
+Taoyuan, Taiwan
+
+Research Assistant /Advisor: Prof. Yi-Ping Chao
+
+Jan 2021 - Dec 2021
+
+Project: Mobile Health Technology Medical Device Pre-Market Review Trend Analysis
+
+- Collected and analyzed pre-market guidelines for mobile medical devices and digital health regulations.
+- Assisted ASUS and Quanta with pre-market compliance documents and compiled review Q&amp;A.
+
+## CYLTEK L TD .,
+
+Intern
+
+Project: Smart Healthcare Application Research Project
+
+- Developed Python-based real-time signal processing algorithms using millimeter-wave radar for contactless measurement of chest displacement, heart rate, and respiration.
+- Ported Python-based DSP algorithms to C++ for embedded integration and worked with hardware engineers to validate data-acquisition timing, sampling behavior, and system synchronization.
+- Collaborated with MediaTek and Chang Gung Hospital to prototype healthcare devices.
+
+## TEACHING EXPERIENCE
+
+## COURSE: DATA STRUCTURE AND ALGORITHM, DEPT CSIE, CGU
+
+Taoyuan, Taiwan Fall 2021 - Spring 2022
+
+Teaching Assistant /Instructor: Prof. Yi-Ping Chao
+
+- Assisted in preparing lecture materials, grading, and counseling students on programming issues.
+
+## PROJECTS
+
+## [Benchmarking Transformer-Based Metagenomic Functional Profiling](https://github.com/Dino-Boooo/Metagenomic-Functional-Profiling)
+
+Spring 2025
+
+- Compared alignment-based vs. ML methods for enzyme function prediction.
+- Accelerated transformer inference with CUDA and benchmarked GPU performance on HPRC clusters.
+- Analyzed encoder substitution and accuracy-balance trade-offs using 3-mer Jaccard similarity .
+
+## [Breast Cancer Imaging Classification: A Comparative Study of SVN, CNN, and Transformer Models on the CBIS-DDSM Dataset Fall 2024](https://github.com/xoumyax/Breast-Cancer-Classification)
+
+- Conducted a comparative study on breast cancer classification using the mammogram dataset .
+- Built SVM models with GLCM feature , compared to CNN and ResNet-based Transformers.
+- Applied image preprocessing (normalization, contrast, augmentation) to improve accuracy.
+
+## [Integrated MRI Hardware and Pulse-Sequence System Using Analog Discovery 2                        Fall 2024](https://github.com/Dino-Boooo/Instrumentation-and-System-Design-for-Advanced-MRI-Imaging)
+
+- Built a mini-MRI system using AD2 with RF control , gradient encoding , and Python acquisition .
+- Calibrated RF and gradient hardware, performed shimming, and acquired optimized spin echoes.
+- Developed 2D imaging using PR with gradient encoding , k-space sampling , and FFT .
+
+## [Fashion MINST Modeling Comparison](https://github.com/Dino-Boooo/Fashion-MNIST-Modeling-Comparision)
+
+Fall 2023
+
+- Implemented and compared CNN and ML models (LightGBM) for imaging classification.
+- Develop a robust image preprocessing pipeline , incorporating normalization, augmentation, and dimensionality reduction to optimize data for modeling.
+
+## TECHNICAL SKILLS
+
+## Core Competencies:
+
+- Imaging &amp; Sensing Systems: pulse/sequencing design, RF control, gradient/signal encoding, echo/signal acquisition pipelines, radar-based sensing
+- Computer Vision &amp; Reconstruction: multi-dimensional reconstruction, transform-based methods, projection techniques, and data preprocessing
+- Embedded DSP: adaptive filtering, beamforming, signal synchronization, real-time DSP
+- Machine Learning: CNNs, Transformers, model optimization, dataset curation, evaluation metrics
+- HPC: CUDA acceleration, GPU profiling, parallelization, memory optimization
+
+## Technical Stack:
+
+Python (NumPy, SciPy, OpenCV, scikit-learn, PyTorch, HuggingFace ), C/C++ , MATLAB , CUDA , TensorFlow , PyWaveforms/ AD2 SDK , Git , Linux , SLURM/HPRC
+
+Hsinchu, Taiwan Sept 2020 - Feb 2021

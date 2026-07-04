@@ -14,9 +14,7 @@ Ph.D. in Computer Science, Department of CSCE
 
 Spring 2024 - Fall 2029
 
-- Advisor:
-
-Dr. Marcus Botacin
+- Advisor: Dr. Marcus Botacin
 
 - Thesis: LLMs for Automated Rule Generation and Model Interpretability in Cyberdefense.
 

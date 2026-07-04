@@ -117,6 +117,75 @@ async def _crawl_linkedin_background():
         await score_pending_jobs()
 
 
+@router.post("/discover-companies", response_model=dict)
+async def discover_companies(background_tasks: BackgroundTasks):
+    """One-time-ish: find companies hiring for the profile's keywords on
+    Greenhouse/Lever/Ashby boards via Serper (≤6 credits, budget-capped) and
+    merge them into the career watchlist under 'Discovered'."""
+    background_tasks.add_task(_discover_companies_background)
+    return {"status": "started", "message": "Company discovery started (≤6 Serper credits)"}
+
+
+async def _discover_companies_background():
+    import re as _re
+    import httpx
+    from ..scrapers.serper import SERPER_URL
+    from ..serper_budget import try_spend
+    from .config_router import CAREER_WATCH_PATH
+
+    config = get_config()
+    cap = config.search.serper_daily_cap
+    kw = (config.profile.positions or ["machine learning intern"])[0]
+    kw2 = (config.search.extra_keywords or ["machine learning"])[0]
+
+    sites = [
+        ("boards.greenhouse.io", r"boards\.greenhouse\.io/([^/?#\"]+)"),
+        ("jobs.lever.co", r"jobs\.lever\.co/([^/?#\"]+)"),
+        ("jobs.ashbyhq.com", r"jobs\.ashbyhq\.com/([^/?#\"]+)"),
+    ]
+    found: dict[str, str] = {}  # slug → board url
+    headers = {"X-API-KEY": config.serper_api_key, "Content-Type": "application/json"}
+    async with httpx.AsyncClient() as client:
+        for site, pattern in sites:
+            for term in (kw, kw2):
+                if not try_spend(cap):
+                    logger.warning("Discovery: Serper cap reached, stopping")
+                    break
+                payload = {"q": f'site:{site} "{term}"', "num": 10}
+                try:
+                    resp = await client.post(SERPER_URL, json=payload, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                except Exception as e:
+                    logger.warning("Discovery query failed: %s", e)
+                    continue
+                for item in resp.json().get("organic", []):
+                    m = _re.search(pattern, item.get("link", ""))
+                    if m:
+                        slug = m.group(1).lower()
+                        found.setdefault(slug, f"https://{site}/{slug}")
+
+    if not found:
+        logger.info("Discovery: nothing found")
+        return
+
+    data = {}
+    if CAREER_WATCH_PATH.exists():
+        data = json.loads(CAREER_WATCH_PATH.read_text(encoding="utf-8"))
+    existing_urls = {e.get("url") for entries in data.values() for e in entries}
+    existing_names = {e.get("name", "").lower() for entries in data.values() for e in entries}
+    bucket = data.setdefault("Discovered", [])
+    added = 0
+    for slug, url in sorted(found.items()):
+        name = slug.replace("-", " ").title()
+        if url in existing_urls or name.lower() in existing_names:
+            continue
+        bucket.append({"name": name, "url": url})
+        added += 1
+    CAREER_WATCH_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CAREER_WATCH_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    logger.info("Discovery: %d new companies added to watchlist (of %d found)", added, len(found))
+
+
 @router.post("/crawl-careers", response_model=dict)
 async def trigger_career_crawl(background_tasks: BackgroundTasks):
     """Crawl Greenhouse/Lever career pages from the watchlist."""
@@ -231,6 +300,15 @@ async def _crawl_phd_background():
             added += 1
         session.commit()
     logger.info("PhD crawl: %d new jobs from %d institutions", added, len(institutions))
+
+    # Academic boards (EURAXESS + jobs.ac.uk) — free, keyword-driven from phd_profile
+    try:
+        from ..scrapers.phd_boards import crawl_phd_boards
+        prof = config.phd_profile or config.profile
+        board_jobs = await crawl_phd_boards(prof.expertise[:3] or ["machine learning"])
+        added += _insert_jobs(board_jobs, track="phd", kind="listing")
+    except Exception as e:
+        logger.warning("PhD boards crawl failed: %s", e)
 
     # PhD listings on LinkedIn too (jobspy, free)
     if config.phd_profile:

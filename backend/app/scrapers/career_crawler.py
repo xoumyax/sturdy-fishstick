@@ -55,14 +55,18 @@ _DOMAIN_ATS: dict[str, tuple[str, str]] = {
 
 def _detect_ats(url: str) -> tuple[str, str]:
     """Return (ats_type, slug_or_url). Checks direct ATS URLs first, then domain mapping."""
-    # Direct Greenhouse board URL
-    m = re.search(r"boards\.greenhouse\.io/([^/?#]+)", url)
-    if m:
-        return ("greenhouse", m.group(1))
-    # Direct Lever URL
-    m = re.search(r"jobs\.lever\.co/([^/?#]+)", url)
-    if m:
-        return ("lever", m.group(1))
+    # Direct ATS URLs — all of these have free, keyless JSON APIs
+    for pattern, ats in (
+        (r"boards\.greenhouse\.io/([^/?#]+)", "greenhouse"),
+        (r"jobs\.lever\.co/([^/?#]+)", "lever"),
+        (r"jobs\.ashbyhq\.com/([^/?#]+)", "ashby"),
+        (r"apply\.workable\.com/([^/?#]+)", "workable"),
+        (r"(?:careers|jobs)\.smartrecruiters\.com/([^/?#]+)", "smartrecruiters"),
+        (r"https?://([^.]+)\.recruitee\.com", "recruitee"),
+    ):
+        m = re.search(pattern, url)
+        if m:
+            return (ats, m.group(1))
     # Domain mapping
     domain = urlparse(url).netloc.lstrip("www.")
     for known, ats_info in _DOMAIN_ATS.items():
@@ -311,6 +315,112 @@ async def _crawl_lever(slug: str, company_name: str,
     return jobs
 
 
+async def _get_json(url: str):
+    async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as c:
+        r = await c.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        if r.status_code != 200:
+            return None
+        return r.json()
+
+
+def _strip_html(text: str, limit: int = 2000) -> str:
+    return re.sub(r"<[^>]+>", " ", text or "")[:limit]
+
+
+async def _crawl_ashby(slug: str, company_name: str, **_) -> list[RawJob]:
+    try:
+        data = await _get_json(f"https://api.ashbyhq.com/posting-api/job-board/{slug}")
+    except Exception as e:
+        logger.warning("Ashby fetch error (%s): %s", slug, e)
+        return []
+    if not data:
+        return []
+    jobs = []
+    for j in data.get("jobs", []):
+        url = j.get("jobUrl") or j.get("applyUrl") or ""
+        if not url:
+            continue
+        loc = j.get("location") or ""
+        jobs.append(RawJob(
+            title=j.get("title", ""), company=company_name, location=loc or None,
+            url=url, description=_strip_html(j.get("descriptionHtml", "")),
+            source="career_page", date_posted=None, country=_detect_country(loc),
+            raw_data={"ats": "ashby", "slug": slug},
+        ))
+    return jobs
+
+
+async def _crawl_workable(slug: str, company_name: str, **_) -> list[RawJob]:
+    try:
+        data = await _get_json(f"https://apply.workable.com/api/v1/widget/accounts/{slug}?details=true")
+    except Exception as e:
+        logger.warning("Workable fetch error (%s): %s", slug, e)
+        return []
+    if not data:
+        return []
+    jobs = []
+    for j in data.get("jobs", []):
+        url = j.get("url") or j.get("shortlink") or ""
+        if not url:
+            continue
+        loc = ", ".join(filter(None, [j.get("city"), j.get("country")]))
+        jobs.append(RawJob(
+            title=j.get("title", ""), company=company_name, location=loc or None,
+            url=url, description=_strip_html(j.get("description", "")),
+            source="career_page", date_posted=None, country=_detect_country(loc),
+            raw_data={"ats": "workable", "slug": slug},
+        ))
+    return jobs
+
+
+async def _crawl_smartrecruiters(slug: str, company_name: str, **_) -> list[RawJob]:
+    try:
+        data = await _get_json(f"https://api.smartrecruiters.com/v1/companies/{slug}/postings?limit=100")
+    except Exception as e:
+        logger.warning("SmartRecruiters fetch error (%s): %s", slug, e)
+        return []
+    if not data:
+        return []
+    jobs = []
+    for j in data.get("content", []):
+        job_id = j.get("id", "")
+        if not job_id:
+            continue
+        loc_d = j.get("location") or {}
+        loc = ", ".join(filter(None, [loc_d.get("city"), loc_d.get("country")]))
+        jobs.append(RawJob(
+            title=j.get("name", ""), company=company_name, location=loc or None,
+            url=f"https://jobs.smartrecruiters.com/{slug}/{job_id}",
+            description=None,
+            source="career_page", date_posted=None, country=_detect_country(loc),
+            raw_data={"ats": "smartrecruiters", "slug": slug, "id": job_id},
+        ))
+    return jobs
+
+
+async def _crawl_recruitee(slug: str, company_name: str, **_) -> list[RawJob]:
+    try:
+        data = await _get_json(f"https://{slug}.recruitee.com/api/offers/")
+    except Exception as e:
+        logger.warning("Recruitee fetch error (%s): %s", slug, e)
+        return []
+    if not data:
+        return []
+    jobs = []
+    for j in data.get("offers", []):
+        url = j.get("careers_url") or ""
+        if not url:
+            continue
+        loc = j.get("location") or ""
+        jobs.append(RawJob(
+            title=j.get("title", ""), company=company_name, location=loc or None,
+            url=url, description=_strip_html(j.get("description", "")),
+            source="career_page", date_posted=None, country=_detect_country(loc),
+            raw_data={"ats": "recruitee", "slug": slug},
+        ))
+    return jobs
+
+
 def _update_watchlist_results(new_jobs: list[RawJob]) -> None:
     """Append new matches to the Recent Matches section of career_watchlist.md."""
     if not WATCHLIST_PATH.exists() or not new_jobs:
@@ -396,6 +506,14 @@ async def crawl_career_pages(positions: list[str], expertise: list[str],
         elif ats == "lever":
             raw = await _crawl_lever(slug, name, fallback_url=url,
                                      positions=positions, expertise=expertise)
+        elif ats == "ashby":
+            raw = await _crawl_ashby(slug, name)
+        elif ats == "workable":
+            raw = await _crawl_workable(slug, name)
+        elif ats == "smartrecruiters":
+            raw = await _crawl_smartrecruiters(slug, name)
+        elif ats == "recruitee":
+            raw = await _crawl_recruitee(slug, name)
         elif ats == "serper":
             raw = await _crawl_serper(name, url, serper_api_key, positions)
         else:
