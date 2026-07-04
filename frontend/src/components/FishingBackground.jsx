@@ -240,7 +240,7 @@ export function FishingBackground({ dark, mode = "careers" }) {
   return (
     <div
       className="fixed inset-0 pointer-events-none select-none overflow-hidden fb-anim"
-      style={{ zIndex: 0, opacity: dark ? 0.82 : 0.2, transition: "opacity 0.6s ease" }}
+      style={{ zIndex: 0, opacity: dark ? 0.82 : 0.5, transition: "opacity 0.6s ease" }}
       aria-hidden="true"
     >
       <svg

@@ -56,7 +56,14 @@ def list_jobs(
         stmt = stmt.where(or_(Job.kind != "post", Job.kind == None))
     # score_min=0 must include unscored jobs (NULL >= 0 is NULL → excluded), so skip the filter
     if score_min is not None and score_min > 0:
-        stmt = stmt.where(Job.match_score >= score_min)
+        if mode == "phd":
+            # PhD jobs may be scored against a placeholder profile (or not yet
+            # scored at all) — never let the slider empty the PhD dashboard.
+            # Once a real profile scores everything, NULLs disappear and this
+            # behaves like the plain filter.
+            stmt = stmt.where(or_(Job.match_score >= score_min, Job.match_score == None))
+        else:
+            stmt = stmt.where(Job.match_score >= score_min)
     if is_priority is not None:
         stmt = stmt.where(Job.is_priority == is_priority)
     if country == "Other":

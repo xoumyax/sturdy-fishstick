@@ -125,3 +125,20 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .fb-anim * { animation: none !important; }
 }
+
+/* ── Recharts in dark mode ─────────────────────────────────── */
+.dark .recharts-text,
+.dark .recharts-cartesian-axis-tick-value tspan { fill: #a8c0d8 !important; }
+.dark .recharts-cartesian-grid line { stroke: #2d3f55 !important; }
+.dark .recharts-legend-item-text { color: #cbd5e1 !important; }
+.dark .recharts-default-tooltip {
+  background-color: #162133 !important;
+  border-color: #2d3f55 !important;
+}
+.dark .recharts-tooltip-label,
+.dark .recharts-tooltip-item { color: #e2e8f0 !important; }
+
+/* Feed panel surfaces in dark mode */
+.dark .bg-slate-100 { background-color: #1e2d40 !important; }
+.dark .bg-slate-50\/60 { background-color: rgba(15, 23, 42, 0.6) !important; }
+.dark .hover\:bg-white:hover { background-color: rgba(30, 45, 64, 0.9) !important; }

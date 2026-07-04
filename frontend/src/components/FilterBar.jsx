@@ -32,18 +32,18 @@ export function FilterBar({ filters, onChange }) {
           min={0}
           max={10}
           step={1}
-          value={filters.score_min ?? 6}
-          onChange={(e) => update("score_min", Number(e.target.value) || null)}
+          value={filters.score_min ?? 0}
+          onChange={(e) => update("score_min", Number(e.target.value))}
           className="w-24 accent-brand-teal"
         />
         <span
           className="w-7 h-7 rounded-full text-center text-xs font-bold flex items-center justify-center"
           style={{
-            background: (filters.score_min ?? 6) >= 7 ? "#23CED9" : (filters.score_min ?? 6) >= 5 ? "#F9D779" : "#e2e8f0",
-            color: (filters.score_min ?? 6) >= 7 ? "#fff" : "#1e293b",
+            background: (filters.score_min ?? 0) >= 7 ? "#23CED9" : (filters.score_min ?? 0) >= 5 ? "#F9D779" : "#e2e8f0",
+            color: (filters.score_min ?? 0) >= 7 ? "#fff" : "#1e293b",
           }}
         >
-          {filters.score_min ?? 6}
+          {filters.score_min ?? 0}
         </span>
       </div>
 

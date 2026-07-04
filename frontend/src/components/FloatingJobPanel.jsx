@@ -190,9 +190,9 @@ export function FloatingJobPanel({ label, sources, accent, accentDark, headerIco
       >
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-1.5 rounded-2xl px-3 py-2 shadow-lg hover:scale-105"
+          className="flex items-center gap-1.5 rounded-2xl px-3 py-2 shadow-lg hover:scale-105 bg-white"
           style={{
-            background: open ? accent : "white",
+            ...(open ? { background: accent } : {}),
             border: `1.5px solid ${accent}44`,
             color: open ? "white" : accent,
             transition: "background 0.15s, transform 0.15s",
@@ -224,13 +224,12 @@ export function FloatingJobPanel({ label, sources, accent, accentDark, headerIco
       {/* Mini panel */}
       {open && (
         <div
-          className="fixed flex flex-col rounded-3xl overflow-hidden"
+          className="fixed flex flex-col rounded-3xl overflow-hidden bg-white"
           style={{
             right: rightOffset, bottom: panelBottom,
             width: 284,
             maxHeight: 380,
             zIndex: 50,
-            background: "white",
             border: `1.5px solid ${accent}2e`,
             boxShadow: `0 8px 40px rgba(0,0,0,0.14), 0 2px 8px ${accent}1a`,
             transition: "right 0.3s ease",

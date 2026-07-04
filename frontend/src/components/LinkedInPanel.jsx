@@ -171,9 +171,9 @@ export function LinkedInPanel({ chatOpen, onHide, mode = "careers" }) {
       >
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-1.5 rounded-2xl px-3 py-2 shadow-lg hover:scale-105"
+          className="flex items-center gap-1.5 rounded-2xl px-3 py-2 shadow-lg hover:scale-105 bg-white"
           style={{
-            background: open ? LI_BLUE : "white",
+            ...(open ? { background: LI_BLUE } : {}),
             border: `1.5px solid ${LI_BLUE}44`,
             color: open ? "white" : LI_BLUE,
             transition: "background 0.15s, transform 0.15s",
@@ -208,13 +208,12 @@ export function LinkedInPanel({ chatOpen, onHide, mode = "careers" }) {
       {/* Mini panel */}
       {open && (
         <div
-          className="fixed flex flex-col rounded-3xl overflow-hidden"
+          className="fixed flex flex-col rounded-3xl overflow-hidden bg-white"
           style={{
             right: rightOffset, bottom: 195,
             width: 284,
             maxHeight: 420,
             zIndex: 50,
-            background: "white",
             border: "1.5px solid rgba(0,119,181,0.18)",
             boxShadow: "0 8px 40px rgba(0,0,0,0.14), 0 2px 8px rgba(0,119,181,0.10)",
             transition: "right 0.3s ease",
