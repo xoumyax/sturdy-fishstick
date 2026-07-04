@@ -8,6 +8,21 @@ profile:
     - "Applied ML Intern"
     - "NLP Research Intern"
     - "AI Safety / Alignment Research Intern"
+    - "Data Science Intern"
+    - "Data Analyst Intern"
+    - "Machine Learning Engineer Intern"
+    - "AI Intern"
+    - "Internship, Machine Learning Engineer"
+    - "Internship, Artificial Intelligence"
+    - "SWE Intern"
+    - "Software Engineer Intern"
+    - "AI Engineering Intern"
+    - "Intern, AI Engineering"
+    - "AI Automation Intern"
+    - "Applied Machine Learning Intern"
+    - "Applied Machine Learning Engineering Intern"
+    - "Applied Machine Learning Scientist Intern"
+    - "AI Analyst Intern"
   expertise:
     - "Python"
     - "PyTorch"
@@ -36,7 +51,7 @@ profile:
     (Ambiguity-Aware Research Agent, Gemma-4-26B). Designed custom eval frameworks
     (Brownie & Puff: BLEU + Parsing + SAT semantics) and GPT-4o user-simulation eval.
     Seeking internships in LLM post-training, alignment, or evaluation at frontier AI labs.
-
+    
   location_preference:
     - "United States"
     - "Canada"
@@ -62,8 +77,6 @@ search:
     - "cybersecurity AI"
   company_blacklist:
   company_whitelist:
-
-    # ── Frontier AI Labs ──────────────────────────────────────────────
     - "Anthropic"
     - "OpenAI"
     - "Google DeepMind"
@@ -84,8 +97,6 @@ search:
     - "Allen Institute for AI"
     - "Nous Research"
     - "Contextual AI"
-
-    # ── Big Tech / Software ───────────────────────────────────────────
     - "Google"
     - "Microsoft"
     - "Apple"
@@ -127,8 +138,6 @@ search:
     - "Anyscale"
     - "Modal"
     - "Replicate"
-
-    # ── Cybersecurity ─────────────────────────────────────────────────
     - "CrowdStrike"
     - "Palo Alto Networks"
     - "Fortinet"
@@ -141,8 +150,6 @@ search:
     - "Rapid7"
     - "Vectra AI"
     - "Cybereason"
-
-    # ── Consulting ────────────────────────────────────────────────────
     - "McKinsey & Company"
     - "Boston Consulting Group"
     - "Bain & Company"
@@ -158,8 +165,6 @@ search:
     - "Infosys"
     - "Wipro"
     - "Tata Consultancy Services"
-
-    # ── Finance / Quant / Banking ─────────────────────────────────────
     - "JPMorgan Chase"
     - "Goldman Sachs"
     - "Morgan Stanley"
@@ -183,8 +188,6 @@ search:
     - "Bank of America"
     - "Wells Fargo"
     - "Citigroup"
-
-    # ── Hardware / Chips / Silicon ────────────────────────────────────
     - "NVIDIA"
     - "NVIDIA Research"
     - "AMD"
@@ -204,8 +207,6 @@ search:
     - "Waymo"
     - "Tesla"
     - "Aurora"
-
-    # ── Insurance / HealthTech ────────────────────────────────────────
     - "Lemonade"
     - "Root Insurance"
     - "Oscar Health"
@@ -218,8 +219,6 @@ search:
     - "Cigna"
     - "Humana"
     - "Anthem"
-
-    # ── Data Analytics / MLOps ────────────────────────────────────────
     - "Tableau"
     - "ThoughtSpot"
     - "Alteryx"
@@ -241,8 +240,6 @@ search:
     - "Qdrant"
     - "Zilliz"
     - "Nomic AI"
-
-    # ── AI Startups Actively Hiring ───────────────────────────────────
     - "Fireworks AI"
     - "Baseten"
     - "Lepton AI"
@@ -261,8 +258,6 @@ search:
     - "Unstructured.io"
     - "LangChain"
     - "LlamaIndex"
-
-    # ── National Labs / Gov-Adjacent ──────────────────────────────────
     - "MITRE Corporation"
     - "RAND Corporation"
     - "Sandia National Laboratories"
@@ -273,20 +268,18 @@ search:
 scheduler:
   times:
     - "08:00"
-    - "12:00"
-    - "17:00"
-    - "21:00"
   timezone: "America/Chicago"
 
 llm:
-  model: "phi3:mini"
+  model: "hf.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF:latest"
+  scoring_model: "hf.co/LiquidAI/LFM2.5-350M-GGUF:latest"
   priority_threshold: 7
   batch_size: 10
 
 notifications:
   email:
     enabled: false
-    to: "soumyajyotidutta23@gmail.com"
+    to: ""
     from_addr: ""
     smtp_host: "smtp.gmail.com"
     smtp_port: 587
@@ -295,3 +288,42 @@ notifications:
 app:
   port: 8001
   host: "0.0.0.0"
+
+# Keep phd_profile as the LAST section — the PhD Profile editor in Settings
+# rewrites this section in place via text splice.
+phd_profile:
+  name: "Soumyajyoti Dutta"
+  positions:
+    - "PhD Research Assistantship"
+    - "PhD Fellowship"
+    - "Graduate Research Fellowship"
+    - "PhD Position Machine Learning"
+    - "PhD Position NLP / LLM"
+    - "PhD Position AI Security"
+    - "Research Internship (PhD)"
+    - "Visiting Researcher"
+  expertise:
+    - "LLM Post-Training"
+    - "Curriculum Learning"
+    - "RLHF"
+    - "Evaluation Frameworks"
+    - "NLP"
+    - "Cybersecurity AI"
+    - "Distributed Training"
+    - "PyTorch"
+    - "Python"
+  resume_summary: |
+    PhD student in Computer Science at Texas A&M University (advised by Dr. Marcus
+    Botacin), researching LLM post-training, curriculum learning, and evaluation
+    infrastructure for cyberdefense. First-author work on end-to-end post-training
+    pipelines (YaraGen — USENIX Security 2026 in prep) and alignment-focused
+    curriculum fine-tuning (Ambiguity-Aware Research Agent, Gemma-4-26B). Experience
+    training 140M–26B parameter models (incl. sparse MoE) on up to 16 H100 GPUs.
+    Seeking PhD research assistantships, fellowships, and research collaborations in
+    LLM alignment, evaluation, and AI security.
+  location_preference:
+    - "United States"
+    - "Canada"
+    - "Europe"
+  remote_ok: false
+  relocation_ok: true

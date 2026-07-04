@@ -37,18 +37,21 @@ function CollectionCard({ job }) {
   );
 }
 
-export function CollectionBin() {
+export function CollectionBin({ mode = "careers" }) {
   const [jobs, setJobs] = useState([]);
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  // Refetch on mode change
+  useEffect(() => { setLoaded(false); setJobs([]); }, [mode]);
+
   useEffect(() => {
     if (open && !loaded) {
-      api.getAggregates()
+      api.getAggregates(mode)
         .then((data) => { setJobs(data); setLoaded(true); })
         .catch(() => setLoaded(true));
     }
-  }, [open, loaded]);
+  }, [open, loaded, mode]);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-4">

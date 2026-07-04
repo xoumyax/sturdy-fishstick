@@ -126,6 +126,69 @@ function ConfigEditor() {
   );
 }
 
+function PhDProfileEditor() {
+  const [loading, setLoading] = useState(true);
+  const [yaml, setYaml] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  useEffect(() => {
+    api.getPhdProfile()
+      .then((res) => { setYaml(res.yaml_content || ""); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    setMsg(null);
+    try {
+      await api.updatePhdProfile(yaml);
+      setMsg({ type: "success", text: "PhD profile saved and reloaded." });
+    } catch (e) {
+      setMsg({ type: "error", text: e.message || "Failed to save." });
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="font-semibold" style={{ color: "#6366f1" }}>PhD Profile</h2>
+        <span className="text-xs text-slate-400">Used for PhD-mode scoring, cover letters, and chat</span>
+      </div>
+      <p className="text-xs text-slate-400 mb-4">
+        Only the <code className="bg-slate-100 px-1 rounded">phd_profile:</code> section of config.yaml — the rest of the config is untouched.
+      </p>
+      {loading ? (
+        <p className="text-sm text-slate-400">Loading…</p>
+      ) : (
+        <>
+          <textarea
+            value={yaml}
+            onChange={(e) => setYaml(e.target.value)}
+            className="w-full font-mono text-xs border rounded-xl p-3 focus:outline-none focus:ring-2 bg-slate-50 resize-y"
+            style={{ "--tw-ring-color": "rgba(99,102,241,0.4)" }}
+            rows={26}
+            spellCheck={false}
+          />
+          <div className="flex items-center gap-3 mt-3">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 text-white text-sm font-medium rounded-xl disabled:opacity-60 hover:brightness-110 transition-all"
+              style={{ background: "linear-gradient(135deg, #818cf8, #6366f1)" }}
+            >
+              {saving ? "Saving…" : "Save & Reload"}
+            </button>
+            {msg && (
+              <p className={`text-sm ${msg.type === "success" ? "text-emerald-600" : "text-red-500"}`}>{msg.text}</p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function LinkedInStatus() {
   const [status, setStatus] = useState(null);
 
@@ -202,6 +265,7 @@ function configToYaml(cfg) {
     "",
     "llm:",
     `  model: "${cfg.llm.model}"`,
+    ...(cfg.llm.scoring_model ? [`  scoring_model: "${cfg.llm.scoring_model}"`] : []),
     `  priority_threshold: ${cfg.llm.priority_threshold}`,
     `  batch_size: ${cfg.llm.batch_size}`,
     "",
@@ -359,10 +423,15 @@ function CareerWatchTab() {
   );
 }
 
-const TABS = ["Config", "Career Watch", "Run History"];
+const TABS = ["Config", "PhD Profile", "Career Watch", "Run History"];
 
-export function Settings() {
-  const [tab, setTab] = useState("Config");
+export function Settings({ mode = "careers" }) {
+  const [tab, setTab] = useState(mode === "phd" ? "PhD Profile" : "Config");
+
+  // Jump to the mode's natural tab when the mode changes
+  useEffect(() => {
+    setTab(mode === "phd" ? "PhD Profile" : "Config");
+  }, [mode]);
 
   return (
     <div className="px-4 sm:px-6 lg:px-10 py-6 max-w-4xl mx-auto w-full">
@@ -396,6 +465,7 @@ export function Settings() {
             <LinkedInStatus />
           </>
         )}
+        {tab === "PhD Profile" && <PhDProfileEditor />}
         {tab === "Career Watch" && <CareerWatchTab />}
         {tab === "Run History" && <RunHistory />}
       </div>

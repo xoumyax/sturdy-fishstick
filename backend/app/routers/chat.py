@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 from typing import Optional
 
 import httpx
@@ -11,14 +10,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlmodel import Session
 
-from ..config import get_config
+from ..config import get_config, profile_for_mode
 from ..database import engine
 from ..models.job import Job
+from ..resumes import load_resumes
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
-
-RESUME_DIR = Path(__file__).parent.parent.parent / "Resume"
 
 PUFF_PROMPT = """You are Puff — a sweet, bubbly Jigglypuff who lives on the Sturdy Fishstick job search dashboard! ✨🎵
 
@@ -116,12 +114,18 @@ APP_KNOWLEDGE = """
 """
 
 
-def _get_jobs_snapshot() -> str:
+def _get_jobs_snapshot(mode: Optional[str] = None) -> str:
     try:
+        from sqlalchemy import or_
         from sqlmodel import select as sql_select
+        stmt = sql_select(Job)
+        if mode == "phd":
+            stmt = stmt.where(Job.source == "phd")
+        elif mode == "careers":
+            stmt = stmt.where(or_(Job.source != "phd", Job.source == None))
         with Session(engine) as session:
             jobs = session.exec(
-                sql_select(Job).order_by(Job.match_score.desc()).limit(20)
+                stmt.order_by(Job.match_score.desc()).limit(20)
             ).all()
         if not jobs:
             return "\n## Current Job List\nNo jobs yet — run a scan from the Dashboard first."
@@ -141,33 +145,27 @@ def _get_jobs_snapshot() -> str:
         return ""
 
 
-def _build_persona_system_prompt(cfg, persona: str) -> str:
+def _build_persona_system_prompt(cfg, persona: str, mode: Optional[str] = None) -> str:
     base = PUFF_PROMPT if persona == "puff" else BROWNIE_PROMPT
+    prof = profile_for_mode(cfg, mode)
     profile = (
         f"\n\n## The Person You're Helping\n"
-        f"Name: {cfg.profile.name}\n"
-        f"Looking for: {', '.join(cfg.profile.positions)}\n"
-        f"Key skills: {', '.join(cfg.profile.expertise[:8])}\n"
+        f"Name: {prof.name}\n"
+        f"Looking for: {', '.join(prof.positions)}\n"
+        f"Key skills: {', '.join(prof.expertise[:8])}\n"
     )
-    jobs = _get_jobs_snapshot()
+    jobs = _get_jobs_snapshot(mode)
     return base + PERSONA_APP_KNOWLEDGE + profile + jobs
 
 
-def _load_resumes() -> str:
-    if not RESUME_DIR.exists():
-        return ""
-    files = sorted(RESUME_DIR.glob("*.txt")) + sorted(RESUME_DIR.glob("*.md"))
-    parts = [f"--- {f.name} ---\n{f.read_text(encoding='utf-8', errors='ignore')}" for f in files]
-    return "\n\n".join(parts)
-
-
-def _build_system_prompt(cfg, job: Optional[Job], resume_text: str) -> str:
+def _build_system_prompt(cfg, job: Optional[Job], resume_text: str, mode: Optional[str] = None) -> str:
+    prof = profile_for_mode(cfg, mode)
     sections = [
         "You are Fishstick, an expert AI job search assistant built into the Sturdy Fishstick job radar app.",
         "Be concise, specific, and actionable. Use bullet points where they add clarity. Don't repeat yourself.",
         APP_KNOWLEDGE,
-        f"## User Profile\nName: {cfg.profile.name}\nTarget roles: {', '.join(cfg.profile.positions)}"
-        f"\nCore skills: {', '.join(cfg.profile.expertise)}\nBackground: {cfg.profile.resume_summary[:600]}",
+        f"## User Profile\nName: {prof.name}\nTarget roles: {', '.join(prof.positions)}"
+        f"\nCore skills: {', '.join(prof.expertise)}\nBackground: {prof.resume_summary[:600]}",
     ]
 
     if resume_text:
@@ -197,6 +195,7 @@ class ChatRequest(BaseModel):
     messages: list[ChatMessage]
     job_id: Optional[str] = None
     persona: Optional[str] = None  # "puff" | "brownie" | None (full assistant)
+    mode: Optional[str] = None  # "careers" | "phd"
 
 
 @router.post("/stream")
@@ -204,14 +203,14 @@ async def chat_stream(body: ChatRequest):
     cfg = get_config()
 
     if body.persona in ("puff", "brownie"):
-        system_prompt = _build_persona_system_prompt(cfg, body.persona)
+        system_prompt = _build_persona_system_prompt(cfg, body.persona, body.mode)
     else:
-        resume_text = _load_resumes()
+        resume_text = load_resumes(body.mode or "careers")
         job: Optional[Job] = None
         if body.job_id:
             with Session(engine) as session:
                 job = session.get(Job, body.job_id)
-        system_prompt = _build_system_prompt(cfg, job, resume_text)
+        system_prompt = _build_system_prompt(cfg, job, resume_text, body.mode)
 
     messages = [{"role": "system", "content": system_prompt}]
     messages += [{"role": m.role, "content": m.content} for m in body.messages[-20:]]  # keep last 20

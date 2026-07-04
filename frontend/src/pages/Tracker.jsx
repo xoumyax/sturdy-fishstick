@@ -80,16 +80,16 @@ function Column({ col, jobs }) {
   );
 }
 
-export function Tracker() {
+export function Tracker({ mode = "careers" }) {
   const [jobs, setJobs] = useState([]);
   const [activeJob, setActiveJob] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   useEffect(() => {
     Promise.all(
-      ["applied", "screen", "interview", "offer", "rejected"].map((s) => api.getJobs({ status: s }))
+      ["applied", "screen", "interview", "offer", "rejected"].map((s) => api.getJobs({ status: s, mode }))
     ).then((results) => setJobs(results.flat()));
-  }, []);
+  }, [mode]);
 
   async function handleDragEnd({ active, over }) {
     setActiveJob(null);

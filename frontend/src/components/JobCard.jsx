@@ -89,7 +89,7 @@ function AiModal({ title, text, onClose }) {
   );
 }
 
-export function JobCard({ job, onUpdate, onChat, onDelete }) {
+export function JobCard({ job, onUpdate, onChat, onDelete, mode = "careers" }) {
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(job.notes || "");
   const [deadline, setDeadline] = useState(job.deadline || "");
@@ -137,7 +137,7 @@ export function JobCard({ job, onUpdate, onChat, onDelete }) {
   async function handleCoverLetter() {
     setGenCL(true);
     try {
-      const res = await api.generateCoverLetter(job.id);
+      const res = await api.generateCoverLetter(job.id, mode);
       setModal({ title: "Cover Letter", text: res.cover_letter });
     } catch (e) { alert("Cover letter failed: " + e.message); }
     finally { setGenCL(false); }
@@ -146,11 +146,11 @@ export function JobCard({ job, onUpdate, onChat, onDelete }) {
   async function handleResumeAdvice() {
     setGenRA(true);
     try {
-      const res = await api.generateResumeAdvice(job.id);
+      const res = await api.generateResumeAdvice(job.id, mode);
       setModal({ title: "Resume Tips for this Role", text: res.advice });
     } catch (e) {
       alert(e.message.includes("404")
-        ? "No resume found — add .txt or .md files to backend/Resume/"
+        ? "No resume found — add PDFs to Resume/Careers/ or Resume/PhD/"
         : "Resume advice failed: " + e.message
       );
     }

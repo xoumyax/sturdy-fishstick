@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 
 const BASE = "http://localhost:8001";
 
-async function* streamChat(messages, jobId) {
+async function* streamChat(messages, jobId, mode) {
   const resp = await fetch(`${BASE}/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
       job_id: jobId ?? null,
+      mode: mode || "careers",
     }),
   });
 
@@ -107,7 +108,7 @@ function getSuggestions(jobContext) {
   ];
 }
 
-export function ChatPanel({ open, onClose, jobContext, onClearContext }) {
+export function ChatPanel({ open, onClose, jobContext, onClearContext, mode }) {
   const [messages, setMessages] = useState([WELCOME]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -161,7 +162,7 @@ export function ChatPanel({ open, onClose, jobContext, onClearContext }) {
 
     try {
       let accumulated = "";
-      for await (const chunk of streamChat(history, jobContext?.id)) {
+      for await (const chunk of streamChat(history, jobContext?.id, mode)) {
         if (abortRef.current) break;
         accumulated += chunk;
         setMessages((prev) =>

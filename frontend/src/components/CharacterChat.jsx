@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 
 const BASE = import.meta.env.DEV ? `http://${window.location.hostname}:8001` : "";
 
-async function* streamPersona(messages, persona) {
+async function* streamPersona(messages, persona, mode) {
   const resp = await fetch(`${BASE}/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
       persona,
+      mode: mode || "careers",
     }),
   });
   if (!resp.ok) { yield "[couldn't connect]"; return; }
@@ -65,7 +66,7 @@ function TypingDots({ color }) {
   );
 }
 
-export function CharacterChat({ persona, open, onClose, bottomOffset }) {
+export function CharacterChat({ persona, open, onClose, bottomOffset, mode }) {
   const cfg = CHARACTERS[persona];
   const [messages, setMessages] = useState([{ id: "hi", role: "assistant", content: cfg.greeting }]);
   const [input, setInput] = useState("");
@@ -90,7 +91,7 @@ export function CharacterChat({ persona, open, onClose, bottomOffset }) {
       .map(({ role, content }) => ({ role, content }));
     try {
       let acc = "";
-      for await (const chunk of streamPersona(history, persona)) {
+      for await (const chunk of streamPersona(history, persona, mode)) {
         acc += chunk;
         setMessages((p) => p.map((m) => m.id === aiId ? { ...m, content: acc, streaming: false } : m));
       }

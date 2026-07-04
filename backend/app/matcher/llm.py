@@ -113,6 +113,19 @@ class OllamaMatcher:
             logger.warning("Ollama error: %s", e)
             return None
 
+    async def unload(self) -> None:
+        """Ask Ollama to evict this model immediately so RAM is freed."""
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    f"{self._base_url}/api/chat",
+                    json={"model": self._model, "messages": [], "keep_alive": 0},
+                    timeout=10.0,
+                )
+            logger.info("Requested unload of model %s", self._model)
+        except Exception as e:
+            logger.debug("Model unload request failed: %s", e)
+
     async def score_job(
         self,
         title: str,

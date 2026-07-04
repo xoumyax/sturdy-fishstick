@@ -26,6 +26,14 @@ async def _run_in_background():
     await run_search_pipeline()
 
 
+@router.post("/score-pending", response_model=dict)
+async def trigger_scoring_pass(background_tasks: BackgroundTasks):
+    """Score all unscored jobs (careers + PhD) in one pass, then unload the model."""
+    from ..scheduler import score_pending_jobs
+    background_tasks.add_task(score_pending_jobs)
+    return {"status": "started", "message": "Scoring pass started for all unscored jobs"}
+
+
 @router.post("/crawl-careers", response_model=dict)
 async def trigger_career_crawl(background_tasks: BackgroundTasks):
     """Crawl Greenhouse/Lever career pages from the watchlist."""
@@ -74,29 +82,8 @@ async def _crawl_careers_background():
     logger.info("Career crawl: %d new jobs added to DB", len(new_jobs))
 
     if new_jobs:
-        from ..matcher.llm import OllamaMatcher
-        matcher = OllamaMatcher(base_url=config.ollama_base_url, model=config.llm.model)
-        bs = config.llm.batch_size
-        threshold = config.llm.priority_threshold
-        for i in range(0, len(new_jobs), bs):
-            batch = new_jobs[i: i + bs]
-            job_dicts = [{"title": j.title, "company": j.company, "description": j.description} for j in batch]
-            scores = await matcher.score_batch(
-                jobs=job_dicts,
-                positions=config.profile.positions,
-                expertise=config.profile.expertise,
-                resume_summary=config.profile.resume_summary,
-            )
-            with Session(engine) as session:
-                for job, (score, reason) in zip(batch, scores):
-                    db_job = session.get(Job, job.id)
-                    if db_job:
-                        db_job.match_score = score
-                        db_job.match_reason = reason
-                        if score is not None:
-                            db_job.is_priority = score >= threshold
-                        session.add(db_job)
-                session.commit()
+        from ..scheduler import score_pending_jobs
+        await score_pending_jobs()
 
     new_urls = {j.url for j in new_jobs}
     _update_watchlist_results([j for j in raw_jobs if j.url in new_urls])
@@ -139,6 +126,7 @@ async def _crawl_phd_background():
     with Session(engine) as session:
         existing_urls: set[str] = set(session.exec(select(Job.url)).all())
 
+    added = 0
     with Session(engine) as session:
         for raw in raw_jobs:
             if raw.url in existing_urls:
@@ -156,5 +144,10 @@ async def _crawl_phd_background():
             )
             session.add(job)
             existing_urls.add(raw.url)
+            added += 1
         session.commit()
-    logger.info("PhD crawl: added jobs from %d institutions", len(institutions))
+    logger.info("PhD crawl: %d new jobs from %d institutions", added, len(institutions))
+
+    if added:
+        from ..scheduler import score_pending_jobs
+        await score_pending_jobs()

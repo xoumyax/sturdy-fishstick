@@ -108,10 +108,12 @@ const PANEL_TABS = [
   },
 ];
 
-export function Dashboard({ onChat, panelVis, onShowPanel }) {
+export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers" }) {
+  // PhD jobs start unscored, so the PhD dashboard must not hide NULL scores
+  const defaultFilters = mode === "phd" ? { score_min: 0 } : { score_min: 6 };
   const [jobs, setJobs] = useState([]);
   const [view, setView] = useState("Jobs");
-  const [filters, setFilters] = useState({ score_min: 6 });
+  const [filters, setFilters] = useState(defaultFilters);
   const [activeFilter, setActiveFilter] = useState(null); // which metric card is active
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState(null);
@@ -121,19 +123,29 @@ export function Dashboard({ onChat, panelVis, onShowPanel }) {
 
   useEffect(() => {
     api.getConfig().then(setConfig).catch(() => {});
-    api.getTrends().then(setTrends).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    api.getTrends(mode).then(setTrends).catch(() => {});
+  }, [mode]);
+
+  // Reset filters when switching dashboards
+  useEffect(() => {
+    setFilters(mode === "phd" ? { score_min: 0 } : { score_min: 6 });
+    setActiveFilter(null);
+    setActiveCountry(null);
+  }, [mode]);
 
   const fetchJobs = useCallback(async () => {
     if (view === "Trends") return;
     setLoading(true);
-    const params = { ...filters };
+    const params = { ...filters, mode };
     if (activeCountry) params.country = activeCountry;
     try {
       const data = await api.getJobs(params);
       setJobs(data);
     } finally { setLoading(false); }
-  }, [view, filters, activeCountry]);
+  }, [view, filters, activeCountry, mode]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
@@ -148,7 +160,7 @@ export function Dashboard({ onChat, panelVis, onShowPanel }) {
   function handleMetricFilter(newFilters, filterId) {
     setActiveFilter((prev) => prev === filterId ? null : filterId);
     if (activeFilter === filterId) {
-      setFilters({ score_min: 6 });
+      setFilters(defaultFilters);
     } else {
       setFilters(newFilters);
     }
@@ -175,6 +187,7 @@ export function Dashboard({ onChat, panelVis, onShowPanel }) {
       <StatsBar
         onFilter={(f, id) => handleMetricFilter(f, id)}
         activeFilter={activeFilter}
+        mode={mode}
       />
 
       {/* View switcher */}
@@ -196,33 +209,46 @@ export function Dashboard({ onChat, panelVis, onShowPanel }) {
       </div>
 
       {view === "Trends" ? (
-        <TrendCharts />
+        <TrendCharts mode={mode} />
       ) : (
         <>
           {/* Crawl buttons + hidden panel tabs */}
           <div className="flex items-center gap-2 mb-5 flex-wrap">
+            {mode !== "phd" && (
+              <button
+                onClick={() => triggerCrawl(api.crawlCareers, "Career crawl")}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-[1.02]"
+                style={{ background: "linear-gradient(135deg,#097C87,#1A8C72)", color: "white" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                Crawl Careers
+              </button>
+            )}
+            {mode === "phd" && (
+              <button
+                onClick={() => triggerCrawl(api.crawlPhd, "PhD crawl")}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-[1.02]"
+                style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "white" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                Crawl PhD
+              </button>
+            )}
             <button
-              onClick={() => triggerCrawl(api.crawlCareers, "Career crawl")}
+              onClick={() => triggerCrawl(api.scorePending, "Scoring pass")}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-[1.02]"
-              style={{ background: "linear-gradient(135deg,#097C87,#1A8C72)", color: "white" }}
+              style={{ border: "1.5px solid #F9D77999", color: "#a07010", background: "#F9D7791a" }}
+              title="Score all unscored jobs (both dashboards) in one pass"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-              Crawl Careers
-            </button>
-            <button
-              onClick={() => triggerCrawl(api.crawlPhd, "PhD crawl")}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-[1.02]"
-              style={{ background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "white" }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-              Crawl PhD
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Score Pending
             </button>
 
-            {/* Hidden panel restore tabs */}
-            {panelVis && PANEL_TABS.some((t) => !panelVis[t.key]) && (
+            {/* Hidden panel restore tabs (only tabs relevant to this mode) */}
+            {panelVis && PANEL_TABS.some((t) => !panelVis[t.key] && (mode === "phd" ? t.key === "phd" : t.key !== "phd")) && (
               <div className="h-4 w-px bg-slate-200 mx-0.5" />
             )}
-            {panelVis && PANEL_TABS.filter((t) => !panelVis[t.key]).map((tab) => (
+            {panelVis && PANEL_TABS.filter((t) => !panelVis[t.key] && (mode === "phd" ? t.key === "phd" : t.key !== "phd")).map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => onShowPanel?.(tab.key)}
@@ -283,7 +309,7 @@ export function Dashboard({ onChat, panelVis, onShowPanel }) {
           )}
 
           {/* Collection Bin */}
-          <CollectionBin />
+          <CollectionBin mode={mode} />
 
           {/* Filter bar */}
           <FilterBar filters={filters} onChange={(f) => { setFilters(f); setActiveFilter(null); }} />
@@ -301,7 +327,7 @@ export function Dashboard({ onChat, panelVis, onShowPanel }) {
               <span className="text-5xl mb-4">🐟</span>
               <p className="text-sm font-medium">No jobs match your current filters.</p>
               <button
-                onClick={() => { setFilters({ score_min: 6 }); setActiveFilter(null); setActiveCountry(null); }}
+                onClick={() => { setFilters(defaultFilters); setActiveFilter(null); setActiveCountry(null); }}
                 className="mt-3 text-xs text-brand-dark font-semibold hover:underline"
               >
                 Reset filters
@@ -313,7 +339,7 @@ export function Dashboard({ onChat, panelVis, onShowPanel }) {
                 {jobs.length} jobs{activeCountry ? ` · ${COUNTRY_FLAGS[activeCountry] || ""} ${activeCountry}` : ""}
               </p>
               <div className="xl:grid xl:grid-cols-2 xl:gap-3">
-                {jobs.map((job) => <JobCard key={job.id} job={job} onUpdate={handleUpdate} onChat={onChat} onDelete={handleDelete} />)}
+                {jobs.map((job) => <JobCard key={job.id} job={job} onUpdate={handleUpdate} onChat={onChat} onDelete={handleDelete} mode={mode} />)}
               </div>
             </div>
           )}

@@ -107,13 +107,13 @@ function CountryBar({ countries }) {
   );
 }
 
-export function TrendCharts() {
+export function TrendCharts({ mode = "careers" }) {
   const [data, setData] = useState(null);
   const [activeTab, setActiveTab] = useState("weekly");
 
   useEffect(() => {
-    api.getTrends().then(setData).catch(() => {});
-  }, []);
+    api.getTrends(mode).then(setData).catch(() => {});
+  }, [mode]);
 
   if (!data) return null;
 

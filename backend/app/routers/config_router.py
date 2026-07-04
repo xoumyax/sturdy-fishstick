@@ -42,6 +42,7 @@ def get_current_config():
         },
         "llm": {
             "model": cfg.llm.model,
+            "scoring_model": cfg.llm.scoring_model,
             "priority_threshold": cfg.llm.priority_threshold,
             "batch_size": cfg.llm.batch_size,
         },
@@ -69,15 +70,75 @@ def update_config(body: ConfigUpdate):
     if missing:
         raise HTTPException(status_code=400, detail=f"Missing config sections: {missing}")
 
-    CONFIG_PATH.write_text(body.yaml_content)
+    new_content = body.yaml_content
+    # The Config-tab editor doesn't include phd_profile — carry the existing
+    # section over so a full-config save never wipes it.
+    if "phd_profile" not in parsed:
+        import re
+        current = CONFIG_PATH.read_text()
+        m = re.search(_PHD_SECTION_RE, current)
+        if m:
+            new_content = new_content.rstrip() + "\n\n" + m.group(0).rstrip() + "\n"
+
+    CONFIG_PATH.write_text(new_content)
     new_cfg = reload_config()
     reload_scheduler()
 
     return {"status": "reloaded", "profile_name": new_cfg.profile.name}
 
 
+_PHD_SECTION_RE = r"(?ms)^phd_profile:\n(?:^(?:[ \t].*)?\n?)*"
+
+
+@router.get("/phd-profile")
+def get_phd_profile():
+    """Return the phd_profile section of config.yaml as a YAML string."""
+    import re
+    raw = CONFIG_PATH.read_text()
+    m = re.search(_PHD_SECTION_RE, raw)
+    return {"yaml_content": m.group(0).rstrip() + "\n" if m else ""}
+
+
+@router.post("/phd-profile")
+def update_phd_profile(body: ConfigUpdate):
+    """Replace only the phd_profile section of config.yaml, preserving the rest verbatim."""
+    import re
+    try:
+        parsed = yaml.safe_load(body.yaml_content)
+    except yaml.YAMLError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid YAML: {e}")
+
+    if not isinstance(parsed, dict) or "phd_profile" not in parsed:
+        raise HTTPException(status_code=400, detail="Content must start with a 'phd_profile:' key")
+    section = parsed["phd_profile"]
+    missing = {"name", "positions", "expertise", "resume_summary"} - set(section or {})
+    if missing:
+        raise HTTPException(status_code=400, detail=f"phd_profile missing fields: {missing}")
+
+    new_section = body.yaml_content.rstrip() + "\n"
+    raw = CONFIG_PATH.read_text()
+    if re.search(_PHD_SECTION_RE, raw):
+        raw = re.sub(_PHD_SECTION_RE, new_section, raw, count=1)
+    else:
+        raw = raw.rstrip() + "\n\n" + new_section
+    CONFIG_PATH.write_text(raw)
+    new_cfg = reload_config()
+
+    return {"status": "reloaded", "phd_positions": len(new_cfg.phd_profile.positions) if new_cfg.phd_profile else 0}
+
+
+def _mode_clause(mode: str | None):
+    from sqlalchemy import or_
+    from ..models.job import Job
+    if mode == "phd":
+        return Job.source == "phd"
+    if mode == "careers":
+        return or_(Job.source != "phd", Job.source == None)
+    return None
+
+
 @router.get("/stats")
-def get_stats():
+def get_stats(mode: str | None = None):
     from datetime import datetime, timedelta
 
     from sqlmodel import Session, func, select
@@ -86,14 +147,19 @@ def get_stats():
     from ..models.job import Job
     from ..models.run import SearchRun
 
+    clause = _mode_clause(mode)
+
+    def scoped(stmt):
+        return stmt.where(clause) if clause is not None else stmt
+
     with Session(engine) as session:
-        total = session.exec(select(func.count(Job.id))).one()
-        priority = session.exec(select(func.count(Job.id)).where(Job.is_priority == True)).one()
-        applied = session.exec(select(func.count(Job.id)).where(Job.status == "applied")).one()
+        total = session.exec(scoped(select(func.count(Job.id)))).one()
+        priority = session.exec(scoped(select(func.count(Job.id)).where(Job.is_priority == True))).one()
+        applied = session.exec(scoped(select(func.count(Job.id)).where(Job.status == "applied"))).one()
 
         cutoff = datetime.utcnow() - timedelta(hours=24)
         new_today = session.exec(
-            select(func.count(Job.id)).where(Job.date_found >= cutoff)
+            scoped(select(func.count(Job.id)).where(Job.date_found >= cutoff))
         ).one()
 
         last_run = session.exec(
@@ -110,13 +176,20 @@ def get_stats():
 
 
 @router.get("/trends")
-def get_trends():
+def get_trends(mode: str | None = None):
     from sqlalchemy import text
     from ..database import engine
 
+    if mode == "phd":
+        mode_sql = "AND source = 'phd'"
+    elif mode == "careers":
+        mode_sql = "AND (source != 'phd' OR source IS NULL)"
+    else:
+        mode_sql = ""
+
     with engine.connect() as conn:
         # Daily new jobs for last 30 days
-        daily_rows = conn.execute(text("""
+        daily_rows = conn.execute(text(f"""
             SELECT
                 date(date_found) as day,
                 COUNT(*) as new_jobs,
@@ -125,13 +198,14 @@ def get_trends():
                 SUM(CASE WHEN match_score IS NOT NULL THEN 1 ELSE 0 END) as scored_count
             FROM jobs
             WHERE is_aggregate = 0
+              {mode_sql}
               AND date(date_found) >= date('now', '-30 days')
             GROUP BY date(date_found)
             ORDER BY day ASC
         """)).fetchall()
 
         # Per-country job counts
-        country_rows = conn.execute(text("""
+        country_rows = conn.execute(text(f"""
             SELECT
                 COALESCE(country, 'Other') as country,
                 COUNT(*) as total,
@@ -139,6 +213,7 @@ def get_trends():
                 SUM(CASE WHEN status='applied' THEN 1 ELSE 0 END) as applied_count
             FROM jobs
             WHERE is_aggregate = 0
+              {mode_sql}
             GROUP BY country
             ORDER BY total DESC
         """)).fetchall()

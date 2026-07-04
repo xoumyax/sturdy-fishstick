@@ -20,6 +20,65 @@ logger = logging.getLogger(__name__)
 _scheduler: AsyncIOScheduler | None = None
 
 
+async def score_pending_jobs() -> int:
+    """Single scoring pass over ALL unscored jobs — both dashboards at once.
+
+    Careers jobs are scored against the main profile, PhD jobs against
+    phd_profile. The (small) scoring model is loaded once for the whole pass
+    and explicitly unloaded at the end so RAM stays free between runs.
+    """
+    config = get_config()
+    with Session(engine) as session:
+        pending = session.exec(
+            select(Job)
+            .where(Job.match_score == None, Job.is_aggregate == False)
+            .order_by(Job.date_found.desc())
+        ).all()
+    if not pending:
+        return 0
+
+    groups = [
+        ("careers", [j for j in pending if j.source != "phd"], config.profile),
+        ("phd", [j for j in pending if j.source == "phd"], config.phd_profile or config.profile),
+    ]
+    model = config.llm.scoring_model or config.llm.model
+    matcher = OllamaMatcher(base_url=config.ollama_base_url, model=model)
+    threshold = config.llm.priority_threshold
+    batch_size = config.llm.batch_size
+    scored = 0
+
+    try:
+        for group_name, group_jobs, prof in groups:
+            for i in range(0, len(group_jobs), batch_size):
+                batch = group_jobs[i : i + batch_size]
+                job_dicts = [{"title": j.title, "company": j.company, "description": j.description} for j in batch]
+                scores = await matcher.score_batch(
+                    jobs=job_dicts,
+                    positions=prof.positions,
+                    expertise=prof.expertise,
+                    resume_summary=prof.resume_summary,
+                )
+                with Session(engine) as session:
+                    for job, (score, reason) in zip(batch, scores):
+                        db_job = session.get(Job, job.id)
+                        if db_job is None:
+                            continue
+                        db_job.match_score = score
+                        db_job.match_reason = reason
+                        if score is not None:
+                            db_job.is_priority = score >= threshold
+                            scored += 1
+                        session.add(db_job)
+                    session.commit()
+            if group_jobs:
+                logger.info("Scoring pass (%s): %d jobs processed", group_name, len(group_jobs))
+    finally:
+        await matcher.unload()
+
+    logger.info("Scoring pass done: %d/%d scored with %s (model unloaded)", scored, len(pending), model)
+    return scored
+
+
 async def run_search_pipeline() -> SearchRun:
     config = get_config()
     run = SearchRun()
@@ -103,30 +162,9 @@ async def run_search_pipeline() -> SearchRun:
 
         logger.info("Run %s: %d new jobs inserted", run_id, len(new_jobs))
 
-        matcher = OllamaMatcher(base_url=config.ollama_base_url, model=config.llm.model)
-        batch_size = config.llm.batch_size
-        threshold = config.llm.priority_threshold
-
-        for i in range(0, len(new_jobs), batch_size):
-            batch = new_jobs[i : i + batch_size]
-            job_dicts = [{"title": j.title, "company": j.company, "description": j.description} for j in batch]
-            scores = await matcher.score_batch(
-                jobs=job_dicts,
-                positions=config.profile.positions,
-                expertise=config.profile.expertise,
-                resume_summary=config.profile.resume_summary,
-            )
-            with Session(engine) as session:
-                for job, (score, reason) in zip(batch, scores):
-                    db_job = session.get(Job, job.id)
-                    if db_job is None:
-                        continue
-                    db_job.match_score = score
-                    db_job.match_reason = reason
-                    if score is not None:
-                        db_job.is_priority = score >= threshold
-                    session.add(db_job)
-                session.commit()
+        # One pass scores everything unscored (careers + PhD) with the small
+        # scoring model, then unloads it.
+        await score_pending_jobs()
 
         # Send email notifications for high-scoring new jobs
         if config.notifications.email.enabled:

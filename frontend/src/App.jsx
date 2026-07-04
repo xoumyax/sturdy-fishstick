@@ -52,11 +52,74 @@ function loadPanelVis() {
   try { return JSON.parse(localStorage.getItem("panelVis")) || {}; } catch { return {}; }
 }
 
+const MODES = [
+  {
+    id: "careers",
+    label: "My Careers",
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
+      </svg>
+    ),
+  },
+  {
+    id: "phd",
+    label: "PhD",
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" />
+      </svg>
+    ),
+  },
+];
+
+function ModeToggle({ mode, onSwitch }) {
+  return (
+    <div className="mx-4 mb-4">
+      <div
+        className="relative flex rounded-xl p-1"
+        style={{ background: "rgba(0,0,0,0.22)" }}
+        role="tablist"
+        aria-label="App mode"
+      >
+        {/* Sliding indicator */}
+        <div
+          className="absolute top-1 bottom-1 rounded-lg transition-all duration-200 ease-out"
+          style={{
+            width: "calc(50% - 4px)",
+            left: mode === "careers" ? 4 : "calc(50% )",
+            background: mode === "careers"
+              ? "linear-gradient(135deg, #23CED9, #1A8C72)"
+              : "linear-gradient(135deg, #818cf8, #6366f1)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+          }}
+        />
+        {MODES.map((m) => (
+          <button
+            key={m.id}
+            role="tab"
+            aria-selected={mode === m.id}
+            onClick={() => onSwitch(m.id)}
+            className="relative z-10 flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-bold rounded-lg transition-colors duration-200"
+            style={{ color: mode === m.id ? "white" : "rgba(255,255,255,0.45)" }}
+          >
+            {m.icon}
+            {m.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState("Dashboard");
   const [chatOpen, setChatOpen] = useState(false);
   const [chatJob, setChatJob] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mode, setMode] = useState(() => {
+    try { return localStorage.getItem("appMode") || "careers"; } catch { return "careers"; }
+  });
   const [panelVis, setPanelVis] = useState(() => {
     const saved = loadPanelVis();
     return { linkedin: true, careers: true, phd: true, ...saved };
@@ -76,6 +139,11 @@ export default function App() {
   useEffect(() => {
     document.title = `${page} | Sturdy Fishstick`;
   }, [page]);
+
+  function switchMode(m) {
+    setMode(m);
+    try { localStorage.setItem("appMode", m); } catch {}
+  }
 
   function openChat(job = null) {
     if (job) setChatJob(job);
@@ -152,6 +220,9 @@ export default function App() {
           </div>
         </div>
 
+        {/* Mode toggle — My Careers / PhD */}
+        <ModeToggle mode={mode} onSwitch={switchMode} />
+
         <div className="mx-5 mb-4 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)" }} />
 
         {/* Nav */}
@@ -220,9 +291,9 @@ export default function App() {
 
       {/* Main content — full width, padded top for hamburger button */}
       <main className="flex-1 min-h-screen w-full pt-14 relative" style={{ zIndex: 1 }}>
-        {page === "Dashboard" && <Dashboard onChat={openChat} panelVis={panelVis} onShowPanel={showPanel} />}
-        {page === "Tracker"   && <Tracker />}
-        {page === "Settings"  && <Settings />}
+        {page === "Dashboard" && <Dashboard onChat={openChat} panelVis={panelVis} onShowPanel={showPanel} mode={mode} />}
+        {page === "Tracker"   && <Tracker mode={mode} />}
+        {page === "Settings"  && <Settings mode={mode} />}
       </main>
 
       {/* Chat panel */}
@@ -231,13 +302,14 @@ export default function App() {
         onClose={() => setChatOpen(false)}
         jobContext={chatJob}
         onClearContext={() => setChatJob(null)}
+        mode={mode}
       />
 
-      {/* LinkedIn feed panel */}
-      {panelVis.linkedin && <LinkedInPanel chatOpen={chatOpen} onHide={() => hidePanel("linkedin")} />}
+      {/* LinkedIn feed panel — careers mode only */}
+      {mode !== "phd" && panelVis.linkedin && <LinkedInPanel chatOpen={chatOpen} onHide={() => hidePanel("linkedin")} />}
 
-      {/* Career page crawl panel */}
-      {panelVis.careers && (
+      {/* Career page crawl panel — careers mode only */}
+      {mode !== "phd" && panelVis.careers && (
         <FloatingJobPanel
           label="Careers"
           sources={["career_page"]}
@@ -255,8 +327,8 @@ export default function App() {
         />
       )}
 
-      {/* PhD positions panel */}
-      {panelVis.phd && (
+      {/* PhD positions panel — phd mode only */}
+      {mode === "phd" && panelVis.phd && (
         <FloatingJobPanel
           label="PhD"
           sources={["phd"]}
@@ -275,12 +347,12 @@ export default function App() {
       )}
 
       {/* Corner companions */}
-      <CornerCompanions chatOpen={chatOpen} />
+      <CornerCompanions chatOpen={chatOpen} mode={mode} />
     </div>
   );
 }
 
-function CornerCompanions({ chatOpen }) {
+function CornerCompanions({ chatOpen, mode }) {
   const [hovered, setHovered] = useState(null);
   const [activeChat, setActiveChat] = useState(null); // "puff" | "brownie" | null
   const rightOffset = chatOpen ? 406 : 16;
@@ -306,6 +378,7 @@ function CornerCompanions({ chatOpen }) {
           open={activeChat === "puff"}
           onClose={() => setActiveChat(null)}
           bottomOffset={76}
+          mode={mode}
         />
 
         <img
@@ -355,6 +428,7 @@ function CornerCompanions({ chatOpen }) {
           open={activeChat === "brownie"}
           onClose={() => setActiveChat(null)}
           bottomOffset={100}
+          mode={mode}
         />
 
         <img

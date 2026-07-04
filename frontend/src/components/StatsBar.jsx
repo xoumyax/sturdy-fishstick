@@ -33,20 +33,24 @@ function MetricCard({ label, value, sub, gradient, textColor, iconBg, icon, onCl
   );
 }
 
-export function StatsBar({ onFilter, activeFilter }) {
+export function StatsBar({ onFilter, activeFilter, mode = "careers" }) {
   const [stats, setStats] = useState(null);
   const [triggering, setTriggering] = useState(false);
+  const isPhd = mode === "phd";
 
   useEffect(() => {
-    api.getStats().then(setStats).catch(() => {});
-    const id = setInterval(() => api.getStats().then(setStats).catch(() => {}), 30000);
+    api.getStats(mode).then(setStats).catch(() => {});
+    const id = setInterval(() => api.getStats(mode).then(setStats).catch(() => {}), 30000);
     return () => clearInterval(id);
-  }, []);
+  }, [mode]);
 
   async function handleTrigger() {
     setTriggering(true);
-    await api.triggerSearch().catch(() => {});
-    setTimeout(() => { setTriggering(false); onFilter?.({ score_min: 6 }); }, 2000);
+    await (isPhd ? api.crawlPhd() : api.triggerSearch()).catch(() => {});
+    setTimeout(() => {
+      setTriggering(false);
+      onFilter?.(isPhd ? { score_min: 0 } : { score_min: 6 });
+    }, 2000);
   }
 
   return (
@@ -54,14 +58,24 @@ export function StatsBar({ onFilter, activeFilter }) {
       {/* Page header */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard</h1>
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+              style={isPhd
+                ? { background: "#6366f11a", color: "#6366f1", border: "1px solid #6366f144" }
+                : { background: "#097C871a", color: "#097C87", border: "1px solid #097C8744" }}
+            >
+              {isPhd ? "PhD" : "My Careers"}
+            </span>
+          </div>
           <p className="text-xs text-slate-400 mt-0.5">
             Last scan: <span className="text-slate-500 font-medium">{stats ? timeAgo(stats.last_run) : "–"}</span>
           </p>
         </div>
         <div className="flex gap-2.5 flex-wrap">
           <a
-            href={api.exportCsvUrl()}
+            href={api.exportCsvUrl(mode)}
             download="sturdy_fishstick_export.csv"
             className="inline-flex items-center gap-1.5 text-sm px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:border-slate-300 hover:shadow-sm transition-all"
           >
@@ -76,12 +90,19 @@ export function StatsBar({ onFilter, activeFilter }) {
             onClick={handleTrigger}
             disabled={triggering}
             className="inline-flex items-center gap-1.5 text-sm px-5 py-2 font-semibold rounded-xl disabled:opacity-60 transition-all shadow-sm text-white"
-            style={{ background: "linear-gradient(135deg, #097C87, #1A8C72)" }}
+            style={{ background: isPhd
+              ? "linear-gradient(135deg, #818cf8, #6366f1)"
+              : "linear-gradient(135deg, #097C87, #1A8C72)" }}
           >
             {triggering ? (
               <>
                 <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 11-6.22-8.56"/></svg>
-                Scanning…
+                {isPhd ? "Crawling…" : "Scanning…"}
+              </>
+            ) : isPhd ? (
+              <>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                Crawl PhD
               </>
             ) : (
               <>

@@ -44,6 +44,7 @@ class LLMConfig:
     model: str
     priority_threshold: int
     batch_size: int
+    scoring_model: str = ""  # small model for routine scoring passes; falls back to `model`
 
 
 @dataclass
@@ -75,6 +76,7 @@ class Config:
     llm: LLMConfig
     notifications: NotificationsConfig
     app: AppConfig
+    phd_profile: ProfileConfig | None = None
 
     # env-sourced
     serper_api_key: str = field(default_factory=lambda: os.environ.get("SERPER_API_KEY", ""))
@@ -83,6 +85,22 @@ class Config:
     smtp_app_password: str = field(default_factory=lambda: os.environ.get("SMTP_APP_PASSWORD", ""))
     linkedin_email: str = field(default_factory=lambda: os.environ.get("LINKEDIN_EMAIL", ""))
     linkedin_password: str = field(default_factory=lambda: os.environ.get("LINKEDIN_PASSWORD", ""))
+
+
+def _parse_profile(p: dict) -> ProfileConfig:
+    # location_preference: accept both string (legacy) and list
+    loc_pref = p.get("location_preference", "United States")
+    if isinstance(loc_pref, str):
+        loc_pref = [loc_pref]
+    return ProfileConfig(
+        name=p["name"],
+        positions=p["positions"],
+        expertise=p["expertise"],
+        resume_summary=p["resume_summary"],
+        location_preference=loc_pref,
+        remote_ok=p.get("remote_ok", True),
+        relocation_ok=p.get("relocation_ok", False),
+    )
 
 
 def load_config() -> Config:
@@ -94,22 +112,11 @@ def load_config() -> Config:
     a = raw["app"]
     n = raw.get("notifications", {})
     ne = n.get("email", {})
-
-    # location_preference: accept both string (legacy) and list
-    loc_pref = p.get("location_preference", "United States")
-    if isinstance(loc_pref, str):
-        loc_pref = [loc_pref]
+    phd_raw = raw.get("phd_profile")
 
     return Config(
-        profile=ProfileConfig(
-            name=p["name"],
-            positions=p["positions"],
-            expertise=p["expertise"],
-            resume_summary=p["resume_summary"],
-            location_preference=loc_pref,
-            remote_ok=p.get("remote_ok", True),
-            relocation_ok=p.get("relocation_ok", False),
-        ),
+        profile=_parse_profile(p),
+        phd_profile=_parse_profile(phd_raw) if phd_raw else None,
         search=SearchConfig(
             sources=s["sources"],
             time_filter=s.get("time_filter", "month"),
@@ -126,6 +133,7 @@ def load_config() -> Config:
             model=l.get("model", "phi3:mini"),
             priority_threshold=l.get("priority_threshold", 7),
             batch_size=l.get("batch_size", 10),
+            scoring_model=l.get("scoring_model", ""),
         ),
         notifications=NotificationsConfig(
             email=EmailNotificationConfig(
@@ -158,3 +166,10 @@ def reload_config() -> Config:
     global _config
     _config = load_config()
     return _config
+
+
+def profile_for_mode(cfg: Config, mode: str | None) -> ProfileConfig:
+    """Return the PhD profile in phd mode (when configured), else the main profile."""
+    if mode == "phd" and cfg.phd_profile is not None:
+        return cfg.phd_profile
+    return cfg.profile
