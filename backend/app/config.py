@@ -46,6 +46,7 @@ class LLMConfig:
     priority_threshold: int
     batch_size: int
     scoring_model: str = ""  # small model for routine scoring passes; falls back to `model`
+    max_scoring_minutes: int = 30  # time-box per scoring pass; leftovers wait for the next one
 
 
 @dataclass
@@ -136,6 +137,7 @@ def load_config() -> Config:
             priority_threshold=l.get("priority_threshold", 7),
             batch_size=l.get("batch_size", 10),
             scoring_model=l.get("scoring_model", ""),
+            max_scoring_minutes=l.get("max_scoring_minutes", 30),
         ),
         notifications=NotificationsConfig(
             email=EmailNotificationConfig(

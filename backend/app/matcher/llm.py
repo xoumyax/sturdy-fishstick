@@ -188,6 +188,26 @@ class OllamaMatcher:
         except Exception as e:
             logger.debug("Model unload request failed: %s", e)
 
+
+async def unload_all_models(base_url: str) -> None:
+    """Evict every model Ollama currently has loaded — end-of-run cleanup."""
+    base = base_url.rstrip("/")
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{base}/api/ps", timeout=10.0)
+            resp.raise_for_status()
+            loaded = [m.get("name") for m in resp.json().get("models", []) if m.get("name")]
+            for name in loaded:
+                await client.post(
+                    f"{base}/api/chat",
+                    json={"model": name, "messages": [], "keep_alive": 0},
+                    timeout=10.0,
+                )
+            if loaded:
+                logger.info("Unloaded %d model(s): %s", len(loaded), ", ".join(loaded))
+    except Exception as e:
+        logger.debug("unload_all_models failed: %s", e)
+
     async def score_job(
         self,
         title: str,

@@ -46,6 +46,7 @@ def get_current_config():
             "scoring_model": cfg.llm.scoring_model,
             "priority_threshold": cfg.llm.priority_threshold,
             "batch_size": cfg.llm.batch_size,
+            "max_scoring_minutes": cfg.llm.max_scoring_minutes,
         },
         "app": {
             "port": cfg.app.port,

@@ -30,13 +30,38 @@ def _ration_queries(queries: list[str], k: int) -> list[str]:
     return [queries[(start + i) % len(queries)] for i in range(k)]
 
 
+_scoring_lock: "asyncio.Lock | None" = None
+
+
+def _get_scoring_lock():
+    global _scoring_lock
+    if _scoring_lock is None:
+        import asyncio
+        _scoring_lock = asyncio.Lock()
+    return _scoring_lock
+
+
 async def score_pending_jobs() -> int:
     """Single scoring pass over ALL unscored jobs — both dashboards at once.
 
     Careers jobs are scored against the main profile, PhD jobs against
     phd_profile. The (small) scoring model is loaded once for the whole pass
     and explicitly unloaded at the end so RAM stays free between runs.
+
+    Single-flight: concurrent callers (daily run + catchup + manual button)
+    skip instead of stacking passes. Time-boxed: a pass stops cleanly after
+    llm.max_scoring_minutes; leftovers stay NULL for the next pass.
     """
+    lock = _get_scoring_lock()
+    if lock.locked():
+        logger.info("Scoring pass already running — skipping duplicate request")
+        return 0
+    async with lock:
+        return await _score_pending_locked()
+
+
+async def _score_pending_locked() -> int:
+    import time as _time
     config = get_config()
     with Session(engine) as session:
         pending = session.exec(
@@ -57,10 +82,20 @@ async def score_pending_jobs() -> int:
     threshold = config.llm.priority_threshold
     batch_size = config.llm.batch_size
     scored = 0
+    deadline = _time.monotonic() + config.llm.max_scoring_minutes * 60
+    timed_out = False
 
     try:
         for group_name, group_jobs, prof in groups:
+            if timed_out:
+                break
             for i in range(0, len(group_jobs), batch_size):
+                if _time.monotonic() > deadline:
+                    logger.warning(
+                        "Scoring pass time-box (%d min) hit — %d jobs left for the next pass",
+                        config.llm.max_scoring_minutes, len(pending) - scored)
+                    timed_out = True
+                    break
                 batch = group_jobs[i : i + batch_size]
                 job_dicts = [{"title": j.title, "company": j.company, "description": j.description} for j in batch]
                 scores = await matcher.score_batch(
@@ -84,9 +119,10 @@ async def score_pending_jobs() -> int:
             if group_jobs:
                 logger.info("Scoring pass (%s): %d jobs processed", group_name, len(group_jobs))
     finally:
-        await matcher.unload()
+        from .matcher.llm import unload_all_models
+        await unload_all_models(config.ollama_base_url)
 
-    logger.info("Scoring pass done: %d/%d scored with %s (model unloaded)", scored, len(pending), model)
+    logger.info("Scoring pass done: %d/%d scored with %s (all models unloaded)", scored, len(pending), model)
     return scored
 
 

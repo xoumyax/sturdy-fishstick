@@ -269,6 +269,7 @@ function configToYaml(cfg) {
     ...(cfg.llm.scoring_model ? [`  scoring_model: "${cfg.llm.scoring_model}"`] : []),
     `  priority_threshold: ${cfg.llm.priority_threshold}`,
     `  batch_size: ${cfg.llm.batch_size}`,
+    `  max_scoring_minutes: ${cfg.llm.max_scoring_minutes ?? 30}`,
     "",
     "notifications:",
     "  email:",
