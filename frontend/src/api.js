@@ -29,6 +29,7 @@ export const api = {
   crawlCareers: () => req("/search/crawl-careers", { method: "POST" }),
   crawlPhd: () => req("/search/crawl-phd", { method: "POST" }),
   scorePending: () => req("/search/score-pending", { method: "POST" }),
+  getPendingCount: () => req("/search/pending-count"),
   getCareerWatch: () => req("/config/career-watch"),
   updateCareerWatch: (data) => req("/config/career-watch", { method: "POST", body: JSON.stringify({ data }) }),
   getRuns: () => req("/runs"),

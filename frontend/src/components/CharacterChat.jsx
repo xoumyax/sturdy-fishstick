@@ -109,7 +109,9 @@ export function CharacterChat({ persona, open, onClose, bottomOffset, mode }) {
 
   return (
     <div
-      className="absolute flex flex-col rounded-3xl overflow-hidden"
+      className="absolute flex flex-col rounded-3xl overflow-hidden cursor-default"
+      onClick={(e) => e.stopPropagation()}
+      onMouseEnter={(e) => e.stopPropagation()}
       style={{
         width: 300,
         maxHeight: 420,

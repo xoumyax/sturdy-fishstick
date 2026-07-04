@@ -6,7 +6,7 @@
 >
 > Status legend: `[ ]` todo · `[x]` done · `[~]` partially done / needs follow-up
 >
-> Last updated: 2026-07-03
+> Last updated: 2026-07-04 — Phase 0 complete (commit b44cb95 + Phase 0 commit)
 
 ---
 
@@ -23,14 +23,14 @@
 ## Phase 0 — Hygiene + quick bug fixes  *(small, do first)*
 
 ### 0.0 Commit the Dual Mode work
-- [ ] `git add` + commit current tree (backend mode endpoints, resumes.py, scheduler single-pass, frontend Dual Mode, config.yaml).
+- [x] `git add` + commit current tree — commit `b44cb95` (2026-07-04).
 
 ### 0.1 Bug #5 — chat closes when clicking the message box
 **Root cause (found):** in `App.jsx → CornerCompanions`, the `<CharacterChat>` panel is rendered
 *inside* the character's wrapper `<div>` which has `onClick={() => toggle(persona)}`. Any click
 inside the open chat (input box, messages) bubbles up and toggles the chat closed.
-- [ ] Stop propagation at the chat panel root (`onClick={(e) => e.stopPropagation()}` on the top-level container in `CharacterChat.jsx`), or move the panel outside the clickable wrapper.
-- [ ] Same check for the badge/label elements.
+- [x] Stop propagation at the chat panel root in `CharacterChat.jsx` (click + mouseEnter).
+- [x] Close button already stopped propagation; badge sits under the sprite (toggle is the intended behavior there).
 - Files: `frontend/src/components/CharacterChat.jsx`, `frontend/src/App.jsx`
 
 ### 0.2 Bug #6 — "Score Pending" reads as a stuck status
@@ -38,8 +38,8 @@ inside the open chat (input box, messages) bubbles up and toggles the chat close
 Dashboard — it's always visible, so it reads like a permanent status. When clicked with zero
 unscored jobs, nothing visibly happens (backend correctly does nothing: DB currently has 0
 unscored). No feedback loop.
-- [ ] `POST /search/score-pending` returns `{pending: N}`; add `GET /search/pending-count`.
-- [ ] Button becomes dynamic: "Score jobs (N)" when N>0, hidden or "All scored ✓" (disabled) when N=0; poll count while a pass is running so progress is visible.
+- [x] `POST /search/score-pending` returns `{pending: N}` (and `status: idle` at 0); added `GET /search/pending-count`.
+- [x] Button is dynamic: "Score jobs (N)" → spinner "Scoring… N left" (polls every 5s, refreshes job list on finish) → green "All scored" chip at 0.
 - Files: `backend/app/routers/search.py`, `frontend/src/pages/Dashboard.jsx`, `frontend/src/api.js`
 
 ### 0.3 Item #8 — separate PhD / Careers resumes ✅ already done

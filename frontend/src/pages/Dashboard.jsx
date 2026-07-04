@@ -120,6 +120,8 @@ export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers" }) {
   const [trends, setTrends] = useState(null);
   const [activeCountry, setActiveCountry] = useState(null);
   const [crawlMsg, setCrawlMsg] = useState(null);
+  const [pending, setPending] = useState(null);   // unscored job count (both modes)
+  const [scoring, setScoring] = useState(false);
 
   useEffect(() => {
     api.getConfig().then(setConfig).catch(() => {});
@@ -148,6 +150,39 @@ export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers" }) {
   }, [view, filters, activeCountry, mode]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
+
+  // Track unscored count; poll faster while a scoring pass runs, and
+  // refresh the job list when the pass finishes.
+  useEffect(() => {
+    const tick = () =>
+      api.getPendingCount()
+        .then((r) => {
+          setPending(r.pending);
+          if (scoring && r.pending === 0) {
+            setScoring(false);
+            fetchJobs();
+          }
+        })
+        .catch(() => {});
+    tick();
+    const id = setInterval(tick, scoring ? 5000 : 30000);
+    return () => clearInterval(id);
+  }, [scoring, fetchJobs]);
+
+  async function handleScorePending() {
+    try {
+      const r = await api.scorePending();
+      if (r.pending === 0) {
+        setCrawlMsg("All jobs are already scored ✓");
+      } else {
+        setScoring(true);
+        setCrawlMsg(`Scoring ${r.pending} jobs — list refreshes when done`);
+      }
+    } catch {
+      setCrawlMsg("Failed to start scoring pass");
+    }
+    setTimeout(() => setCrawlMsg(null), 5000);
+  }
 
   function handleUpdate(updated) {
     setJobs((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
@@ -234,15 +269,31 @@ export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers" }) {
                 Crawl PhD
               </button>
             )}
-            <button
-              onClick={() => triggerCrawl(api.scorePending, "Scoring pass")}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-[1.02]"
-              style={{ border: "1.5px solid #F9D77999", color: "#a07010", background: "#F9D7791a" }}
-              title="Score all unscored jobs (both dashboards) in one pass"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              Score Pending
-            </button>
+            {pending > 0 ? (
+              <button
+                onClick={handleScorePending}
+                disabled={scoring}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-all hover:scale-[1.02] disabled:opacity-70 disabled:hover:scale-100"
+                style={{ border: "1.5px solid #F9D77999", color: "#a07010", background: "#F9D7791a" }}
+                title="Score all unscored jobs (both dashboards) in one pass"
+              >
+                {scoring ? (
+                  <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 12a9 9 0 11-6.22-8.56"/></svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                )}
+                {scoring ? `Scoring… ${pending} left` : `Score jobs (${pending})`}
+              </button>
+            ) : pending === 0 ? (
+              <span
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl"
+                style={{ color: "#1A8C72", background: "#1A8C7212", border: "1.5px solid #1A8C7233" }}
+                title="Every job has an AI match score"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                All scored
+              </span>
+            ) : null}
 
             {/* Hidden panel restore tabs (only tabs relevant to this mode) */}
             {panelVis && PANEL_TABS.some((t) => !panelVis[t.key] && (mode === "phd" ? t.key === "phd" : t.key !== "phd")) && (

@@ -26,12 +26,29 @@ async def _run_in_background():
     await run_search_pipeline()
 
 
+def _count_pending() -> int:
+    from sqlmodel import func
+    with Session(engine) as session:
+        return session.exec(
+            select(func.count(Job.id)).where(Job.match_score == None, Job.is_aggregate == False)
+        ).one()
+
+
+@router.get("/pending-count", response_model=dict)
+def pending_count():
+    """How many jobs are waiting for a score (both modes)."""
+    return {"pending": _count_pending()}
+
+
 @router.post("/score-pending", response_model=dict)
 async def trigger_scoring_pass(background_tasks: BackgroundTasks):
     """Score all unscored jobs (careers + PhD) in one pass, then unload the model."""
     from ..scheduler import score_pending_jobs
+    n = _count_pending()
+    if n == 0:
+        return {"status": "idle", "pending": 0, "message": "All jobs are already scored"}
     background_tasks.add_task(score_pending_jobs)
-    return {"status": "started", "message": "Scoring pass started for all unscored jobs"}
+    return {"status": "started", "pending": n, "message": f"Scoring pass started for {n} jobs"}
 
 
 @router.post("/crawl-careers", response_model=dict)
