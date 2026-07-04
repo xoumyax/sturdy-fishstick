@@ -114,38 +114,17 @@ APP_KNOWLEDGE = """
 """
 
 
-def _get_jobs_snapshot(mode: Optional[str] = None) -> str:
+def _rag_context(user_message: str, mode: Optional[str]) -> str:
     try:
-        from sqlalchemy import or_
-        from sqlmodel import select as sql_select
-        stmt = sql_select(Job)
-        if mode == "phd":
-            stmt = stmt.where(Job.source == "phd")
-        elif mode == "careers":
-            stmt = stmt.where(or_(Job.source != "phd", Job.source == None))
-        with Session(engine) as session:
-            jobs = session.exec(
-                stmt.order_by(Job.match_score.desc()).limit(20)
-            ).all()
-        if not jobs:
-            return "\n## Current Job List\nNo jobs yet — run a scan from the Dashboard first."
-        lines = ["\n## Current Job List (top 20 by match score)"]
-        for j in jobs:
-            score = f"{j.match_score}/10" if j.match_score is not None else "unscored"
-            co = j.company or "Unknown"
-            loc = j.country or j.location or "?"
-            status = j.status or "new"
-            lines.append(f"\n[{score}] {j.title} @ {co} | {loc} | status: {status}")
-            lines.append(f"  Apply: {j.url}")
-            if j.description:
-                lines.append(f"  About: {j.description[:120].strip()}")
-        return "\n".join(lines)
+        from ..rag import build_context
+        return "\n\n" + build_context(user_message, mode)
     except Exception as e:
-        logger.warning("Could not load jobs for persona: %s", e)
+        logger.warning("RAG context failed: %s", e)
         return ""
 
 
-def _build_persona_system_prompt(cfg, persona: str, mode: Optional[str] = None) -> str:
+def _build_persona_system_prompt(cfg, persona: str, mode: Optional[str] = None,
+                                 user_message: str = "") -> str:
     base = PUFF_PROMPT if persona == "puff" else BROWNIE_PROMPT
     prof = profile_for_mode(cfg, mode)
     profile = (
@@ -154,11 +133,11 @@ def _build_persona_system_prompt(cfg, persona: str, mode: Optional[str] = None) 
         f"Looking for: {', '.join(prof.positions)}\n"
         f"Key skills: {', '.join(prof.expertise[:8])}\n"
     )
-    jobs = _get_jobs_snapshot(mode)
-    return base + PERSONA_APP_KNOWLEDGE + profile + jobs
+    return base + PERSONA_APP_KNOWLEDGE + profile + _rag_context(user_message, mode)
 
 
-def _build_system_prompt(cfg, job: Optional[Job], resume_text: str, mode: Optional[str] = None) -> str:
+def _build_system_prompt(cfg, job: Optional[Job], resume_text: str, mode: Optional[str] = None,
+                         user_message: str = "") -> str:
     prof = profile_for_mode(cfg, mode)
     sections = [
         "You are Fishstick, an expert AI job search assistant built into the Sturdy Fishstick job radar app.",
@@ -169,7 +148,7 @@ def _build_system_prompt(cfg, job: Optional[Job], resume_text: str, mode: Option
     ]
 
     if resume_text:
-        sections.append(f"## User's Resume(s)\n{resume_text[:3500]}")
+        sections.append(f"## User's Resume(s)\n{resume_text[:3000]}")
 
     if job:
         sections.append(
@@ -180,8 +159,12 @@ def _build_system_prompt(cfg, job: Optional[Job], resume_text: str, mode: Option
             f"Source: {job.source} | Score: {job.match_score}/10\n"
             f"Match reason: {job.match_reason or 'Not yet scored'}\n"
             f"Current status: {job.status}\n"
-            f"Description:\n{(job.description or 'No description available')[:2500]}"
+            f"Description:\n{(job.description or 'No description available')[:2000]}"
         )
+
+    ctx = _rag_context(user_message, mode)
+    if ctx:
+        sections.append(ctx.strip())
 
     return "\n\n".join(sections)
 
@@ -201,16 +184,18 @@ class ChatRequest(BaseModel):
 @router.post("/stream")
 async def chat_stream(body: ChatRequest):
     cfg = get_config()
+    # Latest user message drives retrieval
+    user_message = next((m.content for m in reversed(body.messages) if m.role == "user"), "")
 
     if body.persona in ("puff", "brownie"):
-        system_prompt = _build_persona_system_prompt(cfg, body.persona, body.mode)
+        system_prompt = _build_persona_system_prompt(cfg, body.persona, body.mode, user_message)
     else:
         resume_text = load_resumes(body.mode or "careers")
         job: Optional[Job] = None
         if body.job_id:
             with Session(engine) as session:
                 job = session.get(Job, body.job_id)
-        system_prompt = _build_system_prompt(cfg, job, resume_text, body.mode)
+        system_prompt = _build_system_prompt(cfg, job, resume_text, body.mode, user_message)
 
     messages = [{"role": "system", "content": system_prompt}]
     messages += [{"role": m.role, "content": m.content} for m in body.messages[-20:]]  # keep last 20
@@ -220,7 +205,7 @@ async def chat_stream(body: ChatRequest):
         "messages": messages,
         "stream": True,
         "keep_alive": 300,
-        "options": {"num_ctx": 3072 if body.persona else 2048},
+        "options": {"num_ctx": 4096},
     }
     ollama_url = f"{cfg.ollama_base_url}/api/chat"
 

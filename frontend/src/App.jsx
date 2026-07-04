@@ -355,11 +355,24 @@ export default function App() {
 function CornerCompanions({ chatOpen, mode }) {
   const [hovered, setHovered] = useState(null);
   const [activeChat, setActiveChat] = useState(null); // "puff" | "brownie" | null
+  const [expandedChats, setExpandedChats] = useState({ puff: false, brownie: false });
   const rightOffset = chatOpen ? 406 : 16;
+
+  // When a chat is half/full screen its sprite docks into the chat header;
+  // hide the corner sprites until the chat shrinks or closes.
+  const anyExpanded = expandedChats.puff || expandedChats.brownie;
+
+  function setExpanded(who, v) {
+    setExpandedChats((prev) => (prev[who] === v ? prev : { ...prev, [who]: v }));
+  }
 
   function toggle(who) {
     setActiveChat((prev) => (prev === who ? null : who));
   }
+
+  const spriteStyle = anyExpanded
+    ? { opacity: 0, pointerEvents: "none", transform: "translateY(20px)", transition: "all 0.25s ease" }
+    : { opacity: 1, transition: "all 0.25s ease" };
 
   return (
     <div
@@ -379,12 +392,14 @@ function CornerCompanions({ chatOpen, mode }) {
           onClose={() => setActiveChat(null)}
           bottomOffset={76}
           mode={mode}
+          onExpandChange={(v) => setExpanded("puff", v)}
         />
 
         <img
           src="/jigglypuff.png"
           alt="Puff"
           style={{
+            ...spriteStyle,
             width: 64,
             height: 64,
             objectFit: "contain",
@@ -402,7 +417,8 @@ function CornerCompanions({ chatOpen, mode }) {
         />
 
         {/* Name badge — overlaid at bottom of image, never in flow */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 pointer-events-none">
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 pointer-events-none"
+          style={{ opacity: anyExpanded ? 0 : 1, transition: "opacity 0.25s ease" }}>
           <span
             className="text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm"
             style={{
@@ -429,12 +445,14 @@ function CornerCompanions({ chatOpen, mode }) {
           onClose={() => setActiveChat(null)}
           bottomOffset={100}
           mode={mode}
+          onExpandChange={(v) => setExpanded("brownie", v)}
         />
 
         <img
           src="/charizard.png"
           alt="Brownie"
           style={{
+            ...spriteStyle,
             width: 92,
             height: 92,
             objectFit: "contain",
@@ -451,7 +469,8 @@ function CornerCompanions({ chatOpen, mode }) {
         />
 
         {/* Name badge — overlaid at bottom of image, never in flow */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 pointer-events-none">
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 pointer-events-none"
+          style={{ opacity: anyExpanded ? 0 : 1, transition: "opacity 0.25s ease" }}>
           <span
             className="text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm"
             style={{

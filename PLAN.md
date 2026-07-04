@@ -6,8 +6,8 @@
 >
 > Status legend: `[ ]` todo · `[x]` done · `[~]` partially done / needs follow-up
 >
-> Last updated: 2026-07-04 — Phases 0–2 complete (b44cb95, 53c6bb7, ea773f0, + Phase 2 commit);
-> full re-score running in background
+> Last updated: 2026-07-04 — Phases 0–3 complete; full re-score running in background
+> (commits: b44cb95, 53c6bb7, ea773f0, 0ca269c, + Phase 3 commit)
 
 ---
 
@@ -100,22 +100,26 @@ scoring everything 2 (including a perfect synthetic match). What shipped instead
 
 ## Phase 3 — Chat: RAG + expandable UI (#2, #3, #4)
 
-### 3.1 RAG-style assistants (#2)
-Today Puff/Brownie/Fishstick only see the top-20-by-score snapshot; they can't answer "how many
-PhD roles in the UK?" or "what did the last run find?".
-- [ ] **Retrieval layer** (`backend/app/rag.py`):
-  - SQLite **FTS5** index over jobs (title/company/description/notes) — zero extra RAM, no embedding model needed on the M1;
-  - structured intent path: parse count/filter-style questions into SQL (counts by mode/country/score/status), so numeric answers are exact rather than hallucinated;
-  - context bundle: matched jobs (top-k by FTS rank) + stats + last runs + config summary + watchlist names, trimmed to ~3–4k tokens.
-- [ ] `/chat/stream` uses retrieval over the user's latest message (mode-scoped) instead of the fixed top-20 snapshot; personas get the same bundle.
-- [ ] Optional (future.md / M4): embeddings + sqlite-vec for semantic retrieval.
-- Files: new `backend/app/rag.py`, `backend/app/routers/chat.py`
+### 3.1 RAG-style assistants (#2) ✅ 2026-07-04
+- [x] **`backend/app/rag.py`**: FTS5 index over jobs (auto-rebuilt when job count changes,
+  LIKE fallback if FTS5 missing); exact SQL aggregates (totals, statuses, sources, score
+  buckets, top countries — all mode-scoped) so counts come from the DB, not the LLM;
+  bundle = stats + top-8 FTS-matched jobs (HTML-stripped snippets) + last 3 runs + watchlist
+  summary, capped ~3.8k chars.
+- [x] `/chat/stream` retrieves on the latest user message for personas AND main Fishstick
+  (main also keeps resume + focused-job sections); num_ctx → 4096.
+- [x] Verified end-to-end: "How many PhD positions total / in Switzerland?" → "103 / 5" (exact).
+- [ ] Optional (M4 machine): embeddings + sqlite-vec for semantic retrieval — see future.md.
 
-### 3.2 Expandable chat windows (#3) + icon docking (#4)
-- [ ] Three sizes for `ChatPanel` and `CharacterChat`: **bubble** (current) → **half** (50% width/height overlay) → **full screen**; expand/contract buttons in the header; size persisted in `localStorage`.
-- [ ] Multi-turn history survives resize (state already held in component — keep it above the resizing container) and is retained per persona for the session.
-- [ ] Icon docking (#4): when a character chat is expanded (half/full), hide the corner sprite and show it inside the chat header (avatar + name); on close, sprite returns to the bottom-right corner. Same pattern for the Fishstick panel's launcher.
-- Files: `frontend/src/components/ChatPanel.jsx`, `CharacterChat.jsx`, `App.jsx`
+### 3.2 Expandable chat windows (#3) + icon docking (#4) ✅ 2026-07-04
+- [x] `CharacterChat`: bubble → half (50vw) → full (inset 0) with header buttons; clicking the
+  active size returns to bubble; size persisted per persona (`charChatSize:puff|brownie`).
+- [x] `ChatPanel`: side (390px) → half → full, persisted (`chatPanelSize`); stale "phi3:mini"
+  header label fixed.
+- [x] Icon docking: expanded chat hides the corner sprites + name badges (fade/slide) and shows
+  the character's avatar image in the chat header; sprites return when shrunk/closed.
+- [x] Multi-turn history survives resize/close (components stay mounted; state above the
+  resizing container). Conversation column centered at 720–760px in expanded modes.
 
 ---
 
