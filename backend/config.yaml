@@ -61,9 +61,9 @@ profile:
 search:
   sources:
     - google_jobs
-    - linkedin
   time_filter: "month"
   max_results_per_query: 20
+  serper_daily_cap: 10
   extra_keywords:
     - "LLM post-training"
     - "RLHF"

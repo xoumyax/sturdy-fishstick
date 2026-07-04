@@ -118,12 +118,23 @@ def _parse_date(raw: Optional[str]) -> Optional[datetime]:
     return None
 
 
+class SerperBudgetExhausted(Exception):
+    """Raised when today's Serper call cap has been spent."""
+
+
 class SerperScraper(BaseScraper):
-    def __init__(self, api_key: str, time_filter: str = "month"):
+    def __init__(self, api_key: str, time_filter: str = "month", daily_cap: int = 10):
         self._api_key = api_key
         self._tbs = TIME_FILTER_MAP.get(time_filter, "qdr:m")
+        self._daily_cap = daily_cap
+
+    def _spend_or_raise(self) -> None:
+        from ..serper_budget import try_spend
+        if not try_spend(self._daily_cap):
+            raise SerperBudgetExhausted(f"Serper daily cap ({self._daily_cap}) reached")
 
     async def _fetch_google_jobs(self, client: httpx.AsyncClient, query: str, num: int) -> list[RawJob]:
+        self._spend_or_raise()
         payload = {"q": query, "gl": "us", "hl": "en", "num": num, "tbs": self._tbs}
         headers = {"X-API-KEY": self._api_key, "Content-Type": "application/json"}
         try:
@@ -175,51 +186,15 @@ class SerperScraper(BaseScraper):
 
         return jobs
 
-    async def _fetch_linkedin(self, client: httpx.AsyncClient, query: str, num: int) -> list[RawJob]:
-        linkedin_query = f"site:linkedin.com/jobs {query}"
-        payload = {"q": linkedin_query, "gl": "us", "hl": "en", "num": num}
-        headers = {"X-API-KEY": self._api_key, "Content-Type": "application/json"}
-        try:
-            resp = await client.post(SERPER_URL, json=payload, headers=headers, timeout=15)
-            resp.raise_for_status()
-        except (httpx.HTTPStatusError, httpx.RequestError) as e:
-            logger.warning("Serper LinkedIn failed for %r: %s", query, e)
-            return []
-
-        data = resp.json()
-        jobs: list[RawJob] = []
-        for item in data.get("organic", []):
-            url = item.get("link", "")
-            if "linkedin.com/jobs/view/" not in url:
-                continue
-            loc = item.get("location")
-            jobs.append(RawJob(
-                title=item.get("title", ""),
-                company=None,
-                location=loc,
-                url=url,
-                description=item.get("snippet"),
-                source="linkedin",
-                date_posted=_parse_date(item.get("date")),
-                raw_data=item,
-                country=_detect_country(loc),
-            ))
-        return jobs
-
     async def fetch(self, queries: list[str], max_results: int) -> list[RawJob]:
         results: list[RawJob] = []
         async with httpx.AsyncClient() as client:
             for query in queries:
-                jobs = await self._fetch_google_jobs(client, query, max_results)
-                results.extend(jobs)
-                await asyncio.sleep(1)
-        return results
-
-    async def fetch_linkedin(self, queries: list[str], max_results: int) -> list[RawJob]:
-        results: list[RawJob] = []
-        async with httpx.AsyncClient() as client:
-            for query in queries[:3]:
-                jobs = await self._fetch_linkedin(client, query, min(max_results, 10))
+                try:
+                    jobs = await self._fetch_google_jobs(client, query, max_results)
+                except SerperBudgetExhausted as e:
+                    logger.warning("%s — skipping remaining %s", e, "queries")
+                    break
                 results.extend(jobs)
                 await asyncio.sleep(1)
         return results

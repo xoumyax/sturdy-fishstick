@@ -12,6 +12,7 @@ engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
 
 
 def create_tables():
+    from . import serper_budget  # noqa: F401 — registers the SerperUsage table
     SQLModel.metadata.create_all(engine)
     _run_migrations()
     _backfill_countries()

@@ -32,6 +32,7 @@ def get_current_config():
             "sources": cfg.search.sources,
             "time_filter": cfg.search.time_filter,
             "max_results_per_query": cfg.search.max_results_per_query,
+            "serper_daily_cap": cfg.search.serper_daily_cap,
             "extra_keywords": cfg.search.extra_keywords,
             "company_blacklist": cfg.search.company_blacklist,
             "company_whitelist": cfg.search.company_whitelist,

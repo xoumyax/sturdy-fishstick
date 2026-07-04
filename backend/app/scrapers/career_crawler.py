@@ -359,7 +359,8 @@ async def _crawl_serper(company_name: str, career_url: str, serper_api_key: str,
         return []
     from .serper import SerperScraper
     domain = urlparse(career_url).netloc.lstrip("www.")
-    queries = [f"site:{domain} {pos} intern 2026" for pos in positions[:2]]
+    # One query per company — Serper calls are budgeted (serper_daily_cap)
+    queries = [f"site:{domain} {positions[0]} intern 2026"] if positions else []
     scraper = SerperScraper(api_key=serper_api_key, time_filter="month")
     raw = await scraper.fetch(queries, max_results=5)
     for j in raw:
@@ -413,10 +414,8 @@ async def crawl_phd_positions(serper_api_key: str, positions: list[str], institu
     if not serper_api_key:
         return []
 
-    queries = []
-    for inst in institutions:
-        for prog in positions[:2]:
-            queries.append(f"PhD {prog} 2026 application {inst}")
+    # One query per institution — Serper calls are budgeted (serper_daily_cap)
+    queries = [f"PhD {positions[0]} 2026 application {inst}" for inst in institutions] if positions else []
 
     scraper = SerperScraper(api_key=serper_api_key, time_filter="month")
     raw = await scraper.fetch(queries, max_results=10)

@@ -20,6 +20,16 @@ logger = logging.getLogger(__name__)
 _scheduler: AsyncIOScheduler | None = None
 
 
+def _ration_queries(queries: list[str], k: int) -> list[str]:
+    """Pick a k-sized window of the query list, rotating position daily so the
+    whole list is covered over successive runs without blowing the Serper cap."""
+    if len(queries) <= k:
+        return queries
+    from datetime import date
+    start = (date.today().toordinal() * k) % len(queries)
+    return [queries[(start + i) % len(queries)] for i in range(k)]
+
+
 async def score_pending_jobs() -> int:
     """Single scoring pass over ALL unscored jobs — both dashboards at once.
 
@@ -92,23 +102,28 @@ async def run_search_pipeline() -> SearchRun:
     logger.info("Search run %s started", run_id)
 
     try:
-        queries = build_queries(
+        all_queries = build_queries(
             positions=config.profile.positions,
             expertise=config.profile.expertise,
             locations=config.profile.location_preference,
             extra_keywords=config.search.extra_keywords,
         )
+        # Budget: only a small rotating window of the full query list per day.
+        # Reserve 2 calls for career/PhD crawl fallbacks.
+        cap = config.search.serper_daily_cap
+        queries = _ration_queries(all_queries, max(1, cap - 2))
+        logger.info("Run %s: %d/%d queries selected (daily cap %d)",
+                    run_id, len(queries), len(all_queries), cap)
 
         scraper = SerperScraper(
             api_key=config.serper_api_key,
             time_filter=config.search.time_filter,
+            daily_cap=cap,
         )
 
         raw_jobs = []
         if "google_jobs" in config.search.sources:
             raw_jobs.extend(await scraper.fetch(queries, config.search.max_results_per_query))
-        if "linkedin" in config.search.sources:
-            raw_jobs.extend(await scraper.fetch_linkedin(queries, config.search.max_results_per_query))
 
         # LinkedIn direct (if credentials configured)
         if config.linkedin_email and config.linkedin_password:
@@ -181,6 +196,12 @@ async def run_search_pipeline() -> SearchRun:
                 db_run.jobs_found = len(raw_jobs)
                 db_run.jobs_new = len(new_jobs)
                 db_run.status = "completed"
+                from .serper_budget import cap_reached, calls_today
+                if cap_reached(cap):
+                    db_run.error_msg = (
+                        f"Serper daily cap reached ({calls_today()}/{cap} calls) — "
+                        "remaining queries skipped"
+                    )
                 session.add(db_run)
                 session.commit()
                 session.refresh(db_run)

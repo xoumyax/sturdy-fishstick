@@ -6,7 +6,7 @@
 >
 > Status legend: `[ ]` todo · `[x]` done · `[~]` partially done / needs follow-up
 >
-> Last updated: 2026-07-04 — Phase 0 complete (commit b44cb95 + Phase 0 commit)
+> Last updated: 2026-07-04 — Phases 0–1 complete (b44cb95, 53c6bb7, + Phase 1 commit)
 
 ---
 
@@ -60,14 +60,12 @@ crawls (2 per institution). 2,000 credits in a week checks out.
 **Budget:** 2,500 credits / 180 days ⇒ **≤10 Serper calls/day** hard cap.
 
 - [x] Scheduler → 1 run/day (config.yaml, applied 2026-07-03)
-- [ ] **Daily cap enforcement:** `serper_calls` counter (new small table or reuse SearchRun), checked inside `SerperScraper`; hard-stop at `search.serper_daily_cap` (default 10), log + surface "cap reached" in run history.
-- [ ] **Query rationing:** round-robin — each daily run picks ~5 queries (rotate through the position list day by day, e.g. `day_of_year % len(queries)` window) instead of all 120. State lives in DB or is derived from date.
-- [ ] **Kill `fetch_linkedin` via Serper** — it only returns aggregate search pages (see Phase 4); reclaim those 3 calls/run.
-- [ ] **Shift bulk discovery to free sources:** GitHub repos (already free), Greenhouse/Lever ATS APIs (free, already implemented), new ATS APIs + FindAPhD (Phase 6) — Serper becomes gap-filler only.
-- [ ] **Evaluate free alternatives** (pick 1–2, don't build all):
-  - `python-jobspy` (scrapes LinkedIn/Indeed/Glassdoor directly, free, no key; risk: breakage/blocks)
-  - Adzuna API (free tier ~250 calls/month), Jooble API (free key)
-  - RSS: WeWorkRemotely, HN "Who is hiring" (monthly)
+- [x] **Daily cap enforcement:** `serper_usage` table + `serper_budget.try_spend()`, checked inside `SerperScraper._fetch_google_jobs` (single choke point, shared by scheduled runs + career fallback + PhD crawl); `search.serper_daily_cap: 10` in config; cap note written to run history `error_msg`.
+- [x] **Query rationing:** `_ration_queries()` in scheduler — 8-query window (cap − 2 reserve) rotates through the full 120-query list daily, derived from `date.today().toordinal()` (no state).
+- [x] **Killed `fetch_linkedin` via Serper** — method deleted, `linkedin` removed from config sources (it only produced aggregate search pages).
+- [x] Career-crawl Serper fallback + PhD crawl trimmed from 2 queries per company/institution to 1.
+- [x] **Free alternative chosen: `python-jobspy`** — spike verified 2026-07-04: 10 real LinkedIn postings (direct `/jobs/view/` URLs, title/company/location) with no login and zero credits. Added to requirements.txt; wiring into the pipeline happens in Phase 4.2. (Adzuna/Jooble/RSS not needed for now.)
+- [~] **Shift bulk discovery to free sources:** GitHub + Greenhouse/Lever already free; jobspy validated; more ATS APIs + FindAPhD land in Phase 6.
 - Files: `backend/app/scrapers/serper.py`, `backend/app/scheduler.py`, `backend/app/config.py`, `backend/config.yaml`
 
 ---
@@ -136,8 +134,8 @@ PhD roles in the UK?" or "what did the last run find?".
 are aggregate search pages ("12,000+ Python Internship jobs in United States"), not postings.
 The direct `linkedin-api` scraper only runs if `LINKEDIN_EMAIL/PASSWORD` are set in `backend/.env`
 (currently not set).
-- [ ] Primary: set up dummy LinkedIn account + `.env` credentials → `LinkedInScraper` returns real postings with title/company/description. Verify `linkedin-api` still works (fragile, unofficial).
-- [ ] Fallback/alternative: `python-jobspy`'s LinkedIn scraper (no login) — evaluate in Phase 1 spike.
+- [ ] **Primary (validated in Phase 1 spike): `python-jobspy`** — returns real LinkedIn postings without login or credits; installed + in requirements.txt. Build `scrapers/jobspy_scraper.py`, wire into pipeline + LinkedIn panel; optionally `linkedin_fetch_description=True` for full descriptions (slower).
+- [ ] Optional secondary: dummy-account `linkedin-api` scraper (already in repo, needs `.env` creds) if jobspy gets rate-limited.
 - [ ] Purge existing junk: delete/flag `source='linkedin'` aggregate rows (they're search pages).
 - Files: `backend/app/scrapers/linkedin_scraper.py`, `backend/app/scheduler.py`, `.env`
 

@@ -31,6 +31,7 @@ class SearchConfig:
     extra_keywords: list[str]
     company_blacklist: list[str]
     company_whitelist: list[str]
+    serper_daily_cap: int = 10  # hard cap on Serper API calls per day (budget: 2500 / 6 months)
 
 
 @dataclass
@@ -124,6 +125,7 @@ def load_config() -> Config:
             extra_keywords=s.get("extra_keywords") or [],
             company_blacklist=s.get("company_blacklist") or [],
             company_whitelist=s.get("company_whitelist") or [],
+            serper_daily_cap=s.get("serper_daily_cap", 10),
         ),
         scheduler=SchedulerConfig(
             times=sc["times"],

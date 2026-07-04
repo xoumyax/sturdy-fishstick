@@ -251,6 +251,7 @@ function configToYaml(cfg) {
     ...cfg.search.sources.map((s) => `    - ${s}`),
     `  time_filter: "${cfg.search.time_filter}"`,
     `  max_results_per_query: ${cfg.search.max_results_per_query}`,
+    `  serper_daily_cap: ${cfg.search.serper_daily_cap ?? 10}`,
     "  extra_keywords:",
     ...cfg.search.extra_keywords.map((k) => `    - "${k}"`),
     "  company_blacklist:",
