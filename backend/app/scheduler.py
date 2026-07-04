@@ -52,7 +52,8 @@ async def score_pending_jobs() -> int:
         ("phd", [j for j in pending if j.source == "phd"], config.phd_profile or config.profile),
     ]
     model = config.llm.scoring_model or config.llm.model
-    matcher = OllamaMatcher(base_url=config.ollama_base_url, model=model)
+    # Generous timeout: thinking models (qwen3) can take 30s+ on long descriptions
+    matcher = OllamaMatcher(base_url=config.ollama_base_url, model=model, timeout=90.0)
     threshold = config.llm.priority_threshold
     batch_size = config.llm.batch_size
     scored = 0
