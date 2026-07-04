@@ -169,8 +169,8 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen relative">
-      {/* Animated fishing background */}
-      <FishingBackground dark={dark} />
+      {/* Animated fishing background — theme follows the active mode */}
+      <FishingBackground dark={dark} mode={mode} />
 
       {/* Backdrop — closes sidebar on click outside */}
       {sidebarOpen && (

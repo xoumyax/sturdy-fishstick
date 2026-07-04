@@ -104,3 +104,24 @@ body {
   50%  { transform: translateX(50px);}
   100% { transform: translateX(0);   }
 }
+@keyframes bubble-rise {
+  0%   { transform: translateY(0);      opacity: 0;    }
+  8%   {                                 opacity: 0.35; }
+  85%  {                                 opacity: 0.25; }
+  100% { transform: translateY(-330px); opacity: 0;    }
+}
+@keyframes kelp-sway {
+  0%, 100% { transform: rotate(-2.2deg); }
+  50%       { transform: rotate(2.2deg);  }
+}
+@keyframes jelly-drift {
+  0%, 100% { transform: translate(0, 0);       }
+  30%       { transform: translate(-26px, -34px); }
+  60%       { transform: translate(14px, -58px);  }
+  80%       { transform: translate(-8px, -20px);  }
+}
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  .fb-anim * { animation: none !important; }
+}

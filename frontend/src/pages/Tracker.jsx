@@ -108,7 +108,7 @@ export function Tracker({ mode = "careers" }) {
     <div className="px-4 sm:px-6 lg:px-10 py-6 max-w-6xl mx-auto w-full">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Tracker</h1>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">Tracker</h1>
           <p className="text-sm text-slate-400 mt-0.5">{jobs.length} active applications</p>
         </div>
       </div>

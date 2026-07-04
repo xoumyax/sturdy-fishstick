@@ -57,10 +57,10 @@ function CountryCard({ country, total, priority, applied, active, gradient, onCl
           </span>
         )}
       </div>
-      <p className={`text-2xl font-bold leading-none mb-1 ${active ? "text-white" : "text-slate-800"}`}>
+      <p className={`text-2xl font-bold leading-none mb-1 ${active ? "text-white" : "text-slate-800 dark:text-slate-100"}`}>
         {total}
       </p>
-      <p className={`text-xs font-semibold truncate ${active ? "text-white/85" : "text-slate-600"}`}>
+      <p className={`text-xs font-semibold truncate ${active ? "text-white/85" : "text-slate-600 dark:text-slate-300"}`}>
         {country}
       </p>
       {applied > 0 && (
