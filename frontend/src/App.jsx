@@ -305,8 +305,8 @@ export default function App() {
         mode={mode}
       />
 
-      {/* LinkedIn feed panel — careers mode only */}
-      {mode !== "phd" && panelVis.linkedin && <LinkedInPanel chatOpen={chatOpen} onHide={() => hidePanel("linkedin")} />}
+      {/* LinkedIn feed panel — both modes (PhD mode shows PhD-track LinkedIn jobs) */}
+      {panelVis.linkedin && <LinkedInPanel chatOpen={chatOpen} onHide={() => hidePanel("linkedin")} mode={mode} />}
 
       {/* Career page crawl panel — careers mode only */}
       {mode !== "phd" && panelVis.careers && (

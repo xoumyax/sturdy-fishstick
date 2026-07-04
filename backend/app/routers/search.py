@@ -51,6 +51,72 @@ async def trigger_scoring_pass(background_tasks: BackgroundTasks):
     return {"status": "started", "pending": n, "message": f"Scoring pass started for {n} jobs"}
 
 
+def _insert_jobs(raw_jobs, track: str = "careers", kind: str = "listing") -> int:
+    """Insert RawJobs that aren't already in the DB. Returns number added."""
+    with Session(engine) as session:
+        existing: set[str] = set(session.exec(select(Job.url)).all())
+        added = 0
+        for raw in raw_jobs:
+            if raw.url in existing:
+                continue
+            session.add(Job(
+                title=raw.title,
+                company=raw.company,
+                location=raw.location,
+                url=raw.url,
+                description=raw.description,
+                source=raw.source,
+                track=track,
+                kind=kind,
+                date_posted=raw.date_posted,
+                country=raw.country,
+                raw_data=json.dumps(raw.raw_data),
+            ))
+            existing.add(raw.url)
+            added += 1
+        session.commit()
+    return added
+
+
+@router.post("/crawl-linkedin", response_model=dict)
+async def trigger_linkedin_crawl(background_tasks: BackgroundTasks):
+    """Fetch real LinkedIn listings (jobspy, free) + hiring posts (Serper, capped)."""
+    background_tasks.add_task(_crawl_linkedin_background)
+    return {"status": "started", "message": "LinkedIn crawl started — listings + posts for both modes"}
+
+
+async def _crawl_linkedin_background():
+    from ..scrapers.jobspy_scraper import fetch_linkedin_listings, fetch_linkedin_posts
+    config = get_config()
+    location = (config.profile.location_preference or ["United States"])[0]
+    total = 0
+
+    # Careers listings
+    listings = await fetch_linkedin_listings(config.profile.positions[:2], location=location)
+    total += _insert_jobs(listings, track="careers", kind="listing")
+
+    # PhD listings
+    if config.phd_profile:
+        phd_terms = [f"PhD {e}" for e in config.phd_profile.expertise[:2]] or ["PhD machine learning"]
+        phd_listings = await fetch_linkedin_listings(phd_terms, location=location)
+        total += _insert_jobs(phd_listings, track="phd", kind="listing")
+
+    # Hiring posts via Serper (1 credit per query, budget-capped)
+    cap = config.search.serper_daily_cap
+    careers_posts = await fetch_linkedin_posts(
+        [f'"hiring" "{config.profile.positions[0]}"'], config.serper_api_key, cap)
+    total += _insert_jobs(careers_posts, track="careers", kind="post")
+    if config.phd_profile:
+        phd_posts = await fetch_linkedin_posts(
+            ['"PhD position" ("fully funded" OR "hiring")'], config.serper_api_key, cap)
+        total += _insert_jobs(phd_posts, track="phd", kind="post")
+
+    logger.info("LinkedIn crawl: %d new items", total)
+    if total:
+        from ..scheduler import score_pending_jobs
+        await score_pending_jobs()
+
+
 @router.post("/crawl-careers", response_model=dict)
 async def trigger_career_crawl(background_tasks: BackgroundTasks):
     """Crawl Greenhouse/Lever career pages from the watchlist."""
@@ -155,6 +221,7 @@ async def _crawl_phd_background():
                 url=raw.url,
                 description=raw.description,
                 source="phd",
+                track="phd",
                 date_posted=raw.date_posted,
                 country=raw.country,
                 raw_data=json.dumps(raw.raw_data),
@@ -164,6 +231,16 @@ async def _crawl_phd_background():
             added += 1
         session.commit()
     logger.info("PhD crawl: %d new jobs from %d institutions", added, len(institutions))
+
+    # PhD listings on LinkedIn too (jobspy, free)
+    if config.phd_profile:
+        try:
+            from ..scrapers.jobspy_scraper import fetch_linkedin_listings
+            terms = [f"PhD {e}" for e in config.phd_profile.expertise[:2]] or ["PhD machine learning"]
+            li = await fetch_linkedin_listings(terms)
+            added += _insert_jobs(li, track="phd", kind="listing")
+        except Exception as e:
+            logger.warning("jobspy PhD listings failed: %s", e)
 
     if added:
         from ..scheduler import score_pending_jobs

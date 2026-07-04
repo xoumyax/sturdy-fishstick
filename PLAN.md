@@ -6,8 +6,8 @@
 >
 > Status legend: `[ ]` todo · `[x]` done · `[~]` partially done / needs follow-up
 >
-> Last updated: 2026-07-04 — Phases 0–3 complete; full re-score running in background
-> (commits: b44cb95, 53c6bb7, ea773f0, 0ca269c, + Phase 3 commit)
+> Last updated: 2026-07-04 — Phases 0–4 complete; full re-score running in background
+> (commits: b44cb95, 53c6bb7, ea773f0, 0ca269c, f190c22, + Phase 4 commit)
 
 ---
 
@@ -125,26 +125,30 @@ scoring everything 2 (including a perfect synthetic match). What shipped instead
 
 ## Phase 4 — Feeds & panels (#7, #9, #10, #11)
 
-### 4.1 Careers panel grouped by company (#7)
-- [ ] `FloatingJobPanel` (careers source): group fetched jobs by `company`; render one card per company (logo initial, name, listing count); clicking a company expands its listings inline (accordion) or in a sub-view with back button.
-- Files: `frontend/src/components/FloatingJobPanel.jsx`
+### 4.1 Careers panel grouped by company (#7) ✅ 2026-07-04
+- [x] Expanded Careers/PhD panel modal: one collapsed card per company (initial, name, count,
+  top score, priority chip) — click to reveal that company's listings (accordion).
 
-### 4.2 Fix LinkedIn (#9) — real listings, not search pages
-**Root cause (found):** LinkedIn jobs come from Serper `site:linkedin.com/jobs` queries — results
-are aggregate search pages ("12,000+ Python Internship jobs in United States"), not postings.
-The direct `linkedin-api` scraper only runs if `LINKEDIN_EMAIL/PASSWORD` are set in `backend/.env`
-(currently not set).
-- [ ] **Primary (validated in Phase 1 spike): `python-jobspy`** — returns real LinkedIn postings without login or credits; installed + in requirements.txt. Build `scrapers/jobspy_scraper.py`, wire into pipeline + LinkedIn panel; optionally `linkedin_fetch_description=True` for full descriptions (slower).
-- [ ] Optional secondary: dummy-account `linkedin-api` scraper (already in repo, needs `.env` creds) if jobspy gets rate-limited.
-- [ ] Purge existing junk: delete/flag `source='linkedin'` aggregate rows (they're search pages).
-- Files: `backend/app/scrapers/linkedin_scraper.py`, `backend/app/scheduler.py`, `.env`
+### 4.2 Fix LinkedIn (#9) ✅ 2026-07-04 — real listings via jobspy
+- [x] `scrapers/jobspy_scraper.py`: real LinkedIn postings (direct /jobs/view/ URLs) with full
+  descriptions (`linkedin_fetch_description=True`), async thread wrapper, URL dedupe.
+- [x] Wired into the daily pipeline (2 careers terms, free) and a new
+  `POST /search/crawl-linkedin` (careers + PhD listings + posts, then scoring pass).
+- [x] Purged the 34 junk `source='linkedin'` aggregate rows.
+- [x] Verified live: 20 careers + 16 PhD real listings (ByteDance, Tesla, Rippling, Skild AI…).
+- [ ] Optional secondary: dummy-account `linkedin-api` if jobspy ever gets rate-limited.
 
-### 4.3 LinkedIn in PhD mode (#10) + posts vs listings sections (#11)
-- [ ] PhD-mode LinkedIn panel: same panel, PhD queries ("PhD position", "PhD studentship", phd_profile positions); jobs saved with `source='linkedin'` + mode-resolvable tag — **add a `kind` column** (see below).
-- [ ] **Schema:** add `Job.kind: "listing" | "post"` (default `listing`). LinkedIn *posts* (people announcing openings) get `kind='post'`.
-- [ ] Posts discovery: `site:linkedin.com/posts "hiring" <role>` via Serper (budget: counts against the 10/day cap — 1–2 queries) or linkedin-api search; PhD variant: `"PhD position" OR "fully funded"` posts.
-- [ ] Panel UI: two tabs inside the LinkedIn panel — **Listings** / **Posts** — in both modes.
-- Files: `backend/app/models/job.py` (+ migration), scrapers, `frontend/src/components/LinkedInPanel.jsx`
+### 4.3 LinkedIn in PhD mode (#10) + posts vs listings (#11) ✅ 2026-07-04
+- [x] **Schema:** `Job.kind` (listing|post) + **`Job.track`** (careers|phd) with migration +
+  backfill; ALL mode filtering (jobs, stats, trends, RAG, scoring groups) moved from
+  `source=='phd'` to `track` — so LinkedIn PhD jobs live in the PhD dashboard properly.
+- [x] Posts discovery via Serper `site:linkedin.com/posts` (1 credit/query, budget-capped,
+  last-week filter); PhD variant `"PhD position" ("fully funded" OR "hiring")`.
+  Verified: 10 PhD hiring posts fetched with 2 credits.
+- [x] LinkedIn panel: visible in BOTH modes, mode-scoped, Listings/Posts tabs, Fetch button
+  (auto-refreshes as results land). Posts excluded from the main dashboard job list.
+- [ ] Tune the careers posts query (exact phrase `"hiring" "<position>"` returned 0 this run —
+  loosen to e.g. `hiring (intern OR internship) machine learning`).
 
 ---
 

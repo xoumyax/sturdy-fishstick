@@ -295,11 +295,11 @@ export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers" }) {
               </span>
             ) : null}
 
-            {/* Hidden panel restore tabs (only tabs relevant to this mode) */}
-            {panelVis && PANEL_TABS.some((t) => !panelVis[t.key] && (mode === "phd" ? t.key === "phd" : t.key !== "phd")) && (
+            {/* Hidden panel restore tabs (LinkedIn is in both modes) */}
+            {panelVis && PANEL_TABS.some((t) => !panelVis[t.key] && (mode === "phd" ? t.key !== "careers" : t.key !== "phd")) && (
               <div className="h-4 w-px bg-slate-200 mx-0.5" />
             )}
-            {panelVis && PANEL_TABS.filter((t) => !panelVis[t.key] && (mode === "phd" ? t.key === "phd" : t.key !== "phd")).map((tab) => (
+            {panelVis && PANEL_TABS.filter((t) => !panelVis[t.key] && (mode === "phd" ? t.key !== "careers" : t.key !== "phd")).map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => onShowPanel?.(tab.key)}

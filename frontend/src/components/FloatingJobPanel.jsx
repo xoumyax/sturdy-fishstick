@@ -46,25 +46,54 @@ function MiniJobCard({ job, accent }) {
 }
 
 function CompanySection({ company, jobs, accent }) {
+  const [open, setOpen] = useState(false);
+  const topScore = Math.max(...jobs.map((j) => j.match_score ?? -1));
+
   return (
-    <div className="mb-6 last:mb-0">
-      <div className="flex items-center gap-2 mb-2">
+    <div
+      className={`mb-3 last:mb-0 rounded-2xl border transition-all ${
+        open ? "border-slate-200 shadow-sm bg-white" : "border-slate-100 bg-slate-50/60 hover:border-slate-200 hover:bg-white"
+      }`}
+    >
+      {/* Company card — click to reveal listings */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left"
+      >
         <div
-          className="w-7 h-7 rounded-xl flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0"
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-[13px] font-bold text-white flex-shrink-0"
           style={{ background: accent }}
         >
           {company[0]?.toUpperCase()}
         </div>
-        <p className="text-sm font-bold text-slate-800">{company}</p>
-        <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-          {jobs.length} {jobs.length === 1 ? "position" : "positions"}
-        </span>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pl-9">
-        {jobs.map((job) => (
-          <MiniJobCard key={job.id} job={job} accent={accent} />
-        ))}
-      </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-800 truncate">{company}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            {jobs.length} {jobs.length === 1 ? "position" : "positions"}
+            {topScore >= 0 && ` · top score ${topScore}/10`}
+          </p>
+        </div>
+        {topScore >= 7 && (
+          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+            style={{ background: "#1A8C7222", color: "#1A8C72" }}>
+            ★ priority
+          </span>
+        )}
+        <svg
+          className={`text-slate-400 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 px-4 pb-4">
+          {jobs.map((job) => (
+            <MiniJobCard key={job.id} job={job} accent={accent} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

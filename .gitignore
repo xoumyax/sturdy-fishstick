@@ -208,7 +208,9 @@ tempCodeRunnerFile.py
 
 # PyPI configuration file
 .pypirc
-
+PLAN.md
+handoff-sturdy-fishstick.md
+jobradar-architecture.md
 # Marimo
 marimo/_static/
 marimo/_lsp/

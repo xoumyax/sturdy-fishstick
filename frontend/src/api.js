@@ -28,6 +28,7 @@ export const api = {
   triggerSearch: () => req("/search/trigger", { method: "POST" }),
   crawlCareers: () => req("/search/crawl-careers", { method: "POST" }),
   crawlPhd: () => req("/search/crawl-phd", { method: "POST" }),
+  crawlLinkedin: () => req("/search/crawl-linkedin", { method: "POST" }),
   scorePending: () => req("/search/score-pending", { method: "POST" }),
   getPendingCount: () => req("/search/pending-count"),
   getCareerWatch: () => req("/config/career-watch"),

@@ -132,9 +132,9 @@ def _mode_clause(mode: str | None):
     from sqlalchemy import or_
     from ..models.job import Job
     if mode == "phd":
-        return Job.source == "phd"
+        return Job.track == "phd"
     if mode == "careers":
-        return or_(Job.source != "phd", Job.source == None)
+        return or_(Job.track != "phd", Job.track == None)
     return None
 
 
@@ -182,9 +182,9 @@ def get_trends(mode: str | None = None):
     from ..database import engine
 
     if mode == "phd":
-        mode_sql = "AND source = 'phd'"
+        mode_sql = "AND track = 'phd'"
     elif mode == "careers":
-        mode_sql = "AND (source != 'phd' OR source IS NULL)"
+        mode_sql = "AND (track != 'phd' OR track IS NULL)"
     else:
         mode_sql = ""
 

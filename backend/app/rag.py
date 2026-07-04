@@ -22,8 +22,8 @@ from .database import engine
 logger = logging.getLogger(__name__)
 
 _MODE_SQL = {
-    "phd": "AND source = 'phd'",
-    "careers": "AND (source != 'phd' OR source IS NULL)",
+    "phd": "AND track = 'phd'",
+    "careers": "AND (track != 'phd' OR track IS NULL)",
 }
 
 

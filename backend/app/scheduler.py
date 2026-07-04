@@ -48,8 +48,8 @@ async def score_pending_jobs() -> int:
         return 0
 
     groups = [
-        ("careers", [j for j in pending if j.source != "phd"], config.profile),
-        ("phd", [j for j in pending if j.source == "phd"], config.phd_profile or config.profile),
+        ("careers", [j for j in pending if j.track != "phd"], config.profile),
+        ("phd", [j for j in pending if j.track == "phd"], config.phd_profile or config.profile),
     ]
     model = config.llm.scoring_model or config.llm.model
     # Generous timeout: thinking models (qwen3) can take 30s+ on long descriptions
@@ -136,6 +136,16 @@ async def run_search_pipeline() -> SearchRun:
                 logger.info("Run %s: LinkedIn direct fetched %d jobs", run_id, len(li_jobs))
             except Exception as e:
                 logger.warning("LinkedIn direct fetch failed: %s", e)
+
+        # LinkedIn listings via jobspy (free, no quota)
+        try:
+            from .scrapers.jobspy_scraper import fetch_linkedin_listings
+            location = (config.profile.location_preference or ["United States"])[0]
+            li_jobs = await fetch_linkedin_listings(config.profile.positions[:2], location=location)
+            raw_jobs.extend(li_jobs)
+            logger.info("Run %s: jobspy LinkedIn fetched %d listings", run_id, len(li_jobs))
+        except Exception as e:
+            logger.warning("jobspy LinkedIn fetch failed: %s", e)
 
         # GitHub repo (free, no quota — always run)
         gh_jobs = await fetch_github_jobs()

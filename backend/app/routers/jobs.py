@@ -19,11 +19,11 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 
 def _apply_mode(stmt, mode: Optional[str]):
-    """phd → only PhD-sourced jobs; careers → everything else."""
+    """phd → only PhD-track jobs; careers → everything else."""
     if mode == "phd":
-        return stmt.where(Job.source == "phd")
+        return stmt.where(Job.track == "phd")
     if mode == "careers":
-        return stmt.where(or_(Job.source != "phd", Job.source == None))
+        return stmt.where(or_(Job.track != "phd", Job.track == None))
     return stmt
 
 
@@ -35,6 +35,7 @@ def list_jobs(
     is_priority: Optional[bool] = Query(None),
     country: Optional[str] = Query(None),
     mode: Optional[str] = Query(None),
+    kind: Optional[str] = Query(None),
     show_aggregates: bool = Query(False),
     only_aggregates: bool = Query(False),
     session: Session = Depends(get_session),
@@ -48,6 +49,11 @@ def list_jobs(
         stmt = stmt.where(Job.status == status)
     if source:
         stmt = stmt.where(Job.source == source)
+    if kind:
+        stmt = stmt.where(Job.kind == kind)
+    else:
+        # Hiring posts live in the LinkedIn panel's Posts tab, not the main list
+        stmt = stmt.where(or_(Job.kind != "post", Job.kind == None))
     # score_min=0 must include unscored jobs (NULL >= 0 is NULL → excluded), so skip the filter
     if score_min is not None and score_min > 0:
         stmt = stmt.where(Job.match_score >= score_min)

@@ -44,6 +44,8 @@ def _run_migrations():
         "ALTER TABLE jobs ADD COLUMN deadline DATE",
         "ALTER TABLE jobs ADD COLUMN is_aggregate BOOLEAN DEFAULT FALSE",
         "ALTER TABLE jobs ADD COLUMN country TEXT",
+        "ALTER TABLE jobs ADD COLUMN kind TEXT DEFAULT 'listing'",
+        "ALTER TABLE jobs ADD COLUMN track TEXT",
     ]
     with engine.connect() as conn:
         for sql in additive:
@@ -52,6 +54,15 @@ def _run_migrations():
                 conn.commit()
             except Exception:
                 pass  # column already exists
+
+        # Backfill track for rows created before the column existed, and fix
+        # kind for anything the migration default missed
+        conn.execute(text(
+            "UPDATE jobs SET track = CASE WHEN source='phd' THEN 'phd' ELSE 'careers' END "
+            "WHERE track IS NULL"
+        ))
+        conn.execute(text("UPDATE jobs SET kind = 'listing' WHERE kind IS NULL"))
+        conn.commit()
 
         # One-time data fix: mark existing aggregate listings
         conn.execute(text("""

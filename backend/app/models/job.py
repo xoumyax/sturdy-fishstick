@@ -28,6 +28,8 @@ class Job(SQLModel, table=True):
     deadline: Optional[date] = None
     country: Optional[str] = None
     raw_data: Optional[str] = None  # JSON string
+    kind: str = "listing"  # listing | post (e.g. LinkedIn hiring post)
+    track: str = "careers"  # careers | phd — which dashboard this belongs to
 
 
 class JobUpdate(SQLModel):
@@ -55,3 +57,5 @@ class JobRead(SQLModel):
     notes: Optional[str]
     deadline: Optional[date]
     country: Optional[str]
+    kind: str = "listing"
+    track: str = "careers"
