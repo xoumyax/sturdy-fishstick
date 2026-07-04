@@ -272,7 +272,7 @@ scheduler:
 
 llm:
   model: "hf.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF:latest"
-  scoring_model: "hf.co/LiquidAI/LFM2.5-350M-GGUF:latest"
+  scoring_model: "qwen3:1.7b"
   priority_threshold: 7
   batch_size: 10
 

@@ -56,7 +56,7 @@ PERSONA_APP_KNOWLEDGE = """
 
 ## Setup from Scratch
 1. `git clone <repo> && cd sturdy-fishstick`
-2. `chmod +x setup.sh && ./setup.sh` (installs Python venv, Node deps, pulls phi3:mini model)
+2. `chmod +x setup.sh && ./setup.sh` (installs Python venv, Node deps, pulls the local LLM models)
 3. Add `SERPER_API_KEY=your_key` to `backend/.env` (get free key at serper.dev)
 4. Edit `backend/config.yaml` — add your name, target job titles, skills
 5. `./start.sh` → open http://localhost:5173
@@ -100,13 +100,13 @@ APP_KNOWLEDGE = """
 
 **Settings**: Edit config.yaml in-browser — profile (name, positions, skills, resume summary), search sources, scheduler times (default 4×/day: 08:00, 12:00, 17:00, 21:00), email notification settings, LLM config.
 
-**Auto-scan**: Runs via APScheduler using Serper.dev (Google Jobs API + LinkedIn site-search). Scores new jobs with Ollama phi3:mini locally. Marks score≥threshold as priority.
+**Auto-scan**: Runs via APScheduler once daily using Serper.dev (Google Jobs, budget-capped) plus free sources (GitHub repos, Greenhouse/Lever career pages). New jobs are scored locally with a small Ollama LLM in a single pass covering both modes. Marks score≥threshold as priority.
 
 **LinkedIn Direct**: Optional. Set LINKEDIN_EMAIL and LINKEDIN_PASSWORD in backend/.env, install linkedin-api. Runs with each scheduled search.
 
 **Email notifications**: Gmail App Password required. Set smtp config in Settings and SMTP_APP_PASSWORD in .env. Sends HTML email + .ics calendar attachment for high-scoring new jobs.
 
-**Score logic**: 0–10. 9–10 = excellent, 7–8 = good, 5–6 = moderate, <5 = weak. Priority threshold configurable (default 7). Scores assigned by local phi3:mini model at scan time.
+**Score logic**: 0–10. 9–10 = excellent, 7–8 = good, 5–6 = moderate, <5 = weak. Priority threshold configurable (default 7). Scores come from a local LLM answering categorical questions (real job? level? field match? skills overlap?) mapped to a number; senior roles and aggregate pages are auto-scored low.
 
 **Resume parsing**: Run `python parse_resume.py your_resume.pdf` at project root. Saves to backend/Resume/ as .txt. Both resumes are loaded together for advice.
 

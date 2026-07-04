@@ -62,13 +62,15 @@ if ! command -v ollama &>/dev/null; then
   warn "Ollama not found. Install from https://ollama.com and re-run setup."
 else
   ok "Ollama found"
-  if ollama list 2>/dev/null | grep -q "phi3:mini"; then
-    ok "phi3:mini model already pulled"
+  for MODEL in "qwen3:1.7b" "hf.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF"; do
+  if ollama list 2>/dev/null | grep -q "$MODEL"; then
+    ok "$MODEL already pulled"
   else
-    echo "  Pulling phi3:mini (~2.3 GB)..."
-    ollama pull phi3:mini
-    ok "phi3:mini pulled"
+    echo "  Pulling $MODEL ..."
+    ollama pull "$MODEL"
+    ok "$MODEL pulled"
   fi
+  done
 fi
 
 # 6. Frontend

@@ -9,24 +9,78 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+# Small local models can't produce calibrated 0-10 scores directly (they
+# collapse to one number). Instead we ask four easy categorical questions and
+# compute the score deterministically in _categories_to_score().
 MATCH_PROMPT = """\
-You are a job match evaluator. Given a candidate profile and a job listing,
-output a JSON object with exactly two fields:
-- "score": integer 0 to 10 (10 = perfect match)
-- "reason": one sentence explaining the score
+Evaluate ONE job listing against a candidate. Answer four questions about it.
 
-Candidate profile:
-Positions seeking: {positions}
-Skills: {expertise}
+Questions:
+1. real_job — true if this is a single genuine job/position listing. \
+false if it is a search-results page, a list of many jobs, a blog/social post, \
+a person's CV, or anything that is not one specific opening.
+2. level — "intern" if it is an internship, PhD/graduate student role, \
+fellowship, or explicitly early-career. "senior" if the title or text says \
+senior, staff, principal, lead, manager, director, VP, or requires 5+ years \
+of experience. Otherwise "early".
+3. field_match — "strong" only if the job's PRIMARY focus is the candidate's \
+specialization (the first few core skills below). "partial" if it is general \
+software/data/ML work outside that specialization. "none" if a different field \
+entirely.
+4. skills_overlap — "high" if the job needs several of the candidate's core \
+skills, "medium" if a few, "low" if almost none.
+
+Candidate:
+Target positions: {positions}
+Core skills: {expertise}
 Background: {resume_summary}
 
-Job:
+Job listing:
 Title: {title}
 Company: {company}
 Description: {description}
 
-Return ONLY valid JSON. No markdown, no explanation outside the JSON.\
+Return ONLY a JSON object exactly like:
+{{"real_job": true, "level": "intern", "field_match": "partial", "skills_overlap": "medium", "reason": "<one short sentence>"}}\
 """
+
+
+_SENIOR_TITLE_WORDS = (
+    "senior ", "sr. ", "sr ", "staff ", "principal ", "director", "vp ",
+    "vice president", "head of", "manager", " lead", "lead,", "lead ",
+)
+_JUNK_TITLE_PATTERNS = (
+    "'s post", "- linkedin", "jobs in ", "+ jobs", ".md at main", "cv -",
+    "top 20", "apply now", "hiring now", "job openings", "internships:",
+)
+
+
+def prefilter_score(title: str) -> Optional[tuple[float, str]]:
+    """Deterministic score for obvious cases — no LLM call needed.
+    Returns None when the LLM should decide."""
+    t = f" {title.lower()} "
+    if any(p in t for p in _JUNK_TITLE_PATTERNS):
+        return 0.0, "Not a single job listing (aggregate/post/page)"
+    if any(w in t for w in _SENIOR_TITLE_WORDS) and "intern" not in t:
+        return 1.0, "Senior-level title"
+    return None
+
+
+def _categories_to_score(cats: dict) -> Optional[float]:
+    """Deterministic score from the model's categorical answers."""
+    if not cats.get("real_job", True):
+        return 0.0
+    level = str(cats.get("level", "early")).lower()
+    field = str(cats.get("field_match", "none")).lower()
+    skills = str(cats.get("skills_overlap", "low")).lower()
+
+    base = {"strong": 8, "partial": 5, "none": 2}.get(field, 2)
+    base += {"high": 1, "medium": 0, "low": -1}.get(skills, 0)
+    if level == "senior":
+        return float(min(base, 2))
+    if level == "intern":
+        base += 1
+    return float(max(0, min(10, base)))
 
 COVER_LETTER_PROMPT = """\
 You are a professional cover letter writer. Write a concise, compelling cover letter \
@@ -86,20 +140,28 @@ Core skills: {expertise}\
 
 
 class OllamaMatcher:
-    def __init__(self, base_url: str, model: str, timeout: float = 30.0):
+    def __init__(self, base_url: str, model: str, timeout: float = 30.0,
+                 think: Optional[bool] = None):
         self._base_url = base_url.rstrip("/")
         self._model = model
         self._timeout = timeout
+        self._think = think  # False disables thinking on models like qwen3
 
     async def _call_ollama(self, prompt: str, timeout: Optional[float] = None,
-                            keep_alive: int = 0, num_ctx: int = 2048) -> Optional[str]:
+                            keep_alive: int = 0, num_ctx: int = 2048,
+                            temperature: Optional[float] = None) -> Optional[str]:
+        options = {"num_ctx": num_ctx}
+        if temperature is not None:
+            options["temperature"] = temperature
         payload = {
             "model": self._model,
             "messages": [{"role": "user", "content": prompt}],
             "stream": False,
             "keep_alive": keep_alive,   # 0 = unload immediately; seconds otherwise
-            "options": {"num_ctx": num_ctx},
+            "options": options,
         }
+        if self._think is not None:
+            payload["think"] = self._think
         t = timeout or self._timeout
         try:
             async with httpx.AsyncClient() as client:
@@ -135,6 +197,10 @@ class OllamaMatcher:
         expertise: list[str],
         resume_summary: str,
     ) -> tuple[Optional[float], Optional[str]]:
+        pre = prefilter_score(title)
+        if pre is not None:
+            return pre
+
         desc = description or ""
         relevant_desc = desc[200:1200] if len(desc) > 200 else desc
 
@@ -147,7 +213,7 @@ class OllamaMatcher:
             description=relevant_desc,
         )
 
-        content = await self._call_ollama(prompt, keep_alive=120, num_ctx=2048)
+        content = await self._call_ollama(prompt, keep_alive=120, num_ctx=2048, temperature=0)
         if content is None:
             return None, None
 
@@ -167,7 +233,12 @@ class OllamaMatcher:
                         end = i + 1
                         break
             result = json.loads(clean[start:end] if end != -1 else clean)
-            return float(result["score"]), str(result["reason"])
+            score = _categories_to_score(result)
+            if score is None:
+                raise ValueError(f"could not derive score from {result}")
+            detail = f"{result.get('field_match', '?')} field / {result.get('skills_overlap', '?')} skills / {result.get('level', '?')}"
+            reason = str(result.get("reason", "")).strip()
+            return score, f"{reason} ({detail})" if reason else detail
         except Exception:
             logger.warning("Failed to parse Ollama score response for %r: %r", title, content[:200])
             return None, None

@@ -6,7 +6,8 @@
 >
 > Status legend: `[ ]` todo · `[x]` done · `[~]` partially done / needs follow-up
 >
-> Last updated: 2026-07-04 — Phases 0–1 complete (b44cb95, 53c6bb7, + Phase 1 commit)
+> Last updated: 2026-07-04 — Phases 0–2 complete (b44cb95, 53c6bb7, ea773f0, + Phase 2 commit);
+> full re-score running in background
 
 ---
 
@@ -72,33 +73,28 @@ crawls (2 per institution). 2,000 credits in a week checks out.
 
 ## Phase 2 — Model quality (#1, #15)
 
-### 2.1 Switch scoring to 1.2B + tighten the rubric (#1)
-Observed: LFM2.5-350M scores are generous and compressed (PhD batch: 35× 9, 66× 8, 2× 7 —
-everything "priority"). Useless for ranking.
-- [ ] `scoring_model` → `hf.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF:latest` (config.yaml one-liner).
-- [ ] Rewrite `MATCH_PROMPT` with a hard rubric + anchors:
-  - explicit score bands ("9–10 exact role+skills match at target company; 7–8 …; ≤4 wrong seniority/field") and 2–3 few-shot examples with *low* scores so the model learns to use the bottom half;
-  - penalize: senior/staff roles, non-target countries, aggregate pages;
-  - ask for a 0–10 **integer**, temperature 0 (`options.temperature: 0`).
-- [ ] Recalibrate `priority_threshold` after a re-score (likely 8 → keep, but check distribution).
-- [ ] One-off re-score: `UPDATE jobs SET match_score=NULL ...` then run Score Pending; compare distributions (expect a spread, not 8–9 wall).
-- Files: `backend/app/matcher/llm.py`, `backend/config.yaml`
+### 2.1 Tighten scoring (#1) — done, with a twist
+The plan's "strict rubric prompt" approach **failed on small models**: the 1.2B collapsed to
+scoring everything 2 (including a perfect synthetic match). What shipped instead:
+- [x] **Categorical decomposition:** the model answers 4 easy questions (`real_job`, `level`,
+  `field_match`, `skills_overlap`) and `_categories_to_score()` maps them to 0–10
+  deterministically in Python. Small models handle categories far better than calibrated numbers.
+- [x] **Deterministic prefilter** (`prefilter_score`): senior titles → 1, aggregate/junk pages
+  ("N+ jobs", "'s Post - LinkedIn", ".md at main"…) → 0, no LLM call at all.
+- [x] temperature 0 for scoring; `think` param support in OllamaMatcher.
+- [x] `scoring_model` → **qwen3:1.7b** (thinking) — not the LFM 1.2B as originally guessed;
+  see shootout in future.md. Generation stays LFM2.5-1.2B-Instruct.
+- [x] Full re-score of 1,090 jobs kicked off 2026-07-04 (backgrounded, hours).
+- [ ] After re-score completes: check distribution, recalibrate `priority_threshold` if needed.
 
 ### 2.2 Best model for MacBook Air M1 8GB (#15)
-Constraint: ~8GB unified RAM shared with macOS + browser + backend ⇒ keep resident model
-**≤ ~2.5GB**, prefer fast unload (already implemented). Candidates to benchmark (all Ollama-pullable):
-
-| Model | RAM (Q4) | Role | Notes |
-|---|---|---|---|
-| LFM2.5-1.2B-Instruct (current) | ~0.8 GB | scoring + chat | fastest, on-device-specialized |
-| Qwen3-1.7B | ~1.2 GB | scoring + chat | strong JSON discipline, /no_think mode |
-| Llama-3.2-3B-Instruct | ~2.0 GB | chat/generation | better prose for cover letters |
-| Phi-4-mini (3.8B) | ~2.4 GB | generation | strong reasoning, tight fit — test under load |
-| Gemma-3-4B-QAT | ~2.4 GB | generation | good quality, tight fit |
-
-- [ ] Benchmark script (`backend/scripts/bench_models.py`): 20 sampled jobs × each model → JSON-parse rate, score spread (stddev), latency; pick scorer + generator.
-- [ ] Working hypothesis: **scorer = LFM2.5-1.2B or Qwen3-1.7B; generator = Llama-3.2-3B** if it fits comfortably, else keep 1.2B for both.
-- [ ] Write **`future.md`** — model plan for Mac mini M4 24GB: Qwen3-14B (Q4 ~9GB), Gemma-3-12B-QAT (~8GB), Phi-4 14B (~9GB), Mistral-Small-3.2-24B (Q4 ~13GB), gpt-oss-20b (MXFP4 ~13GB); embedding model for RAG (nomic-embed-text / embeddinggemma-300m); keep-alive strategies when RAM is plentiful.
+- [x] Benchmark script `backend/scripts/bench_models.py` (parse rate, spread, senior-leak, latency).
+- [x] Shootout run: 350M = no discrimination; 1.2B-Instruct = traps only; 1.2B-Thinking GGUF =
+  broken via Ollama (raw `<think>` overruns ctx); **qwen3:1.7b (thinking) = winner**.
+- [x] **`future.md` written** — current picks + M4-mini-24GB lineup (qwen3:8b scorer,
+  gemma3:12b-qat generation, nomic-embed-text for RAG) and transferable lessons.
+- [x] setup.sh now pulls qwen3:1.7b + LFM2.5-1.2B-Instruct (phi3:mini references removed;
+  `ollama rm phi3:mini` frees 2.2 GB disk).
 
 ---
 
