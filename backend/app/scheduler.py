@@ -97,15 +97,15 @@ async def _score_pending_locked() -> int:
                     timed_out = True
                     break
                 batch = group_jobs[i : i + batch_size]
-                job_dicts = [{"title": j.title, "company": j.company, "description": j.description} for j in batch]
-                scores = await matcher.score_batch(
-                    jobs=job_dicts,
-                    positions=prof.positions,
-                    expertise=prof.expertise,
-                    resume_summary=prof.resume_summary,
-                )
-                with Session(engine) as session:
-                    for job, (score, reason) in zip(batch, scores):
+                # Score and commit one job at a time — progress is visible in
+                # the pending count immediately and survives interruptions.
+                for job in batch:
+                    score, reason = await matcher.score_job(
+                        title=job.title, company=job.company, description=job.description,
+                        positions=prof.positions, expertise=prof.expertise,
+                        resume_summary=prof.resume_summary,
+                    )
+                    with Session(engine) as session:
                         db_job = session.get(Job, job.id)
                         if db_job is None:
                             continue
@@ -115,7 +115,7 @@ async def _score_pending_locked() -> int:
                             db_job.is_priority = score >= threshold
                             scored += 1
                         session.add(db_job)
-                    session.commit()
+                        session.commit()
             if group_jobs:
                 logger.info("Scoring pass (%s): %d jobs processed", group_name, len(group_jobs))
     finally:
