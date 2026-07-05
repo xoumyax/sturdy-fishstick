@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import csv
 import io
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import nullslast, or_
-from sqlmodel import Session, select
+from sqlmodel import Session, SQLModel, select
 
 from ..config import get_config, profile_for_mode
 from ..database import get_session
@@ -72,6 +73,44 @@ def list_jobs(
         stmt = stmt.where(Job.country == country)
     stmt = stmt.order_by(nullslast(Job.match_score.desc()), Job.date_found.desc())
     return session.exec(stmt).all()
+
+
+class JobCreate(SQLModel):
+    title: str
+    company: Optional[str] = None
+    location: Optional[str] = None
+    url: Optional[str] = None
+    description: Optional[str] = None
+    status: str = "applied"
+    notes: Optional[str] = None
+    deadline: Optional[date] = None
+    track: str = "careers"
+
+
+@router.post("", response_model=JobRead, status_code=201)
+def create_job(body: JobCreate, session: Session = Depends(get_session)):
+    """Manually add a role (e.g. applied somewhere outside the app)."""
+    import uuid as _uuid
+    url = (body.url or "").strip() or f"manual://{_uuid.uuid4()}"
+    if session.exec(select(Job).where(Job.url == url)).first():
+        raise HTTPException(status_code=409, detail="A job with this URL already exists")
+    job = Job(
+        title=body.title.strip(),
+        company=(body.company or "").strip() or None,
+        location=(body.location or "").strip() or None,
+        url=url,
+        description=body.description,
+        source="manual",
+        track="phd" if body.track == "phd" else "careers",
+        kind="listing",
+        status=body.status if body.status else "applied",
+        notes=body.notes,
+        deadline=body.deadline,
+    )
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return job
 
 
 @router.get("/export")

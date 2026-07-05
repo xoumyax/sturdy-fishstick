@@ -86,8 +86,19 @@ async def trigger_linkedin_crawl(background_tasks: BackgroundTasks):
 
 
 async def _crawl_linkedin_background():
+    from ..activity import log_activity
+    try:
+        await _crawl_linkedin_inner()
+    except Exception as e:
+        logger.exception("LinkedIn crawl failed")
+        log_activity("linkedin_crawl", "failed", str(e)[:200])
+
+
+async def _crawl_linkedin_inner():
+    from ..activity import log_activity
     from ..scrapers.jobspy_scraper import fetch_linkedin_listings, fetch_linkedin_posts
     config = get_config()
+    log_activity("linkedin_crawl", "started", "listings + hiring posts, both tracks")
     location = (config.profile.location_preference or ["United States"])[0]
     total = 0
 
@@ -116,6 +127,7 @@ async def _crawl_linkedin_background():
         total += _insert_jobs(phd_posts, track="phd", kind="post")
 
     logger.info("LinkedIn crawl: %d new items", total)
+    log_activity("linkedin_crawl", "completed", f"added {total} new LinkedIn items")
     if total:
         from ..scheduler import score_pending_jobs
         await score_pending_jobs()
@@ -198,8 +210,19 @@ async def trigger_career_crawl(background_tasks: BackgroundTasks):
 
 
 async def _crawl_careers_background():
+    from ..activity import log_activity
+    try:
+        await _crawl_careers_inner()
+    except Exception as e:
+        logger.exception("Career crawl failed")
+        log_activity("careers_crawl", "failed", str(e)[:200])
+
+
+async def _crawl_careers_inner():
+    from ..activity import log_activity
     from ..scrapers.career_crawler import crawl_career_pages, _update_watchlist_results
     config = get_config()
+    log_activity("careers_crawl", "started", "Greenhouse/Lever/Ashby/Workable + watchlist")
     raw_jobs = await crawl_career_pages(
         positions=config.profile.positions,
         expertise=config.profile.expertise,
@@ -207,6 +230,7 @@ async def _crawl_careers_background():
     )
     if not raw_jobs:
         logger.info("Career crawl: no relevant jobs found")
+        log_activity("careers_crawl", "completed", "no relevant jobs found")
         return
 
     with Session(engine) as session:
@@ -236,6 +260,7 @@ async def _crawl_careers_background():
             session.refresh(j)
 
     logger.info("Career crawl: %d new jobs added to DB", len(new_jobs))
+    log_activity("careers_crawl", "completed", f"added {len(new_jobs)} new jobs from career pages")
 
     if new_jobs:
         from ..scheduler import score_pending_jobs
@@ -269,12 +294,24 @@ def _funding_filter(raw_jobs, required: bool):
 
 
 async def _crawl_phd_background():
+    from ..activity import log_activity
+    try:
+        await _crawl_phd_inner()
+    except Exception as e:
+        logger.exception("PhD crawl failed")
+        log_activity("phd_crawl", "failed", str(e)[:200])
+
+
+async def _crawl_phd_inner():
     import re
     from datetime import date
+    from ..activity import log_activity
     from ..scrapers.career_crawler import WATCHLIST_PATH, crawl_phd_positions
     config = get_config()
     ps = config.phd_search
     prof = config.phd_profile or config.profile
+    log_activity("phd_crawl", "started",
+                 f"Serper institutions + academic boards + LinkedIn (funding_required={ps.funding_required})")
 
     # Institutions: phd_search whitelist first, then the markdown watchlist, then defaults
     blacklist = {b.lower() for b in ps.institution_blacklist}
@@ -360,6 +397,7 @@ async def _crawl_phd_background():
         except Exception as e:
             logger.warning("jobspy PhD listings failed: %s", e)
 
+    log_activity("phd_crawl", "completed", f"added {added} new PhD positions")
     if added:
         from ..scheduler import score_pending_jobs
         await score_pending_jobs()

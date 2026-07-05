@@ -62,6 +62,7 @@ async def score_pending_jobs() -> int:
 
 async def _score_pending_locked() -> int:
     import time as _time
+    from .activity import log_activity
     config = get_config()
     with Session(engine) as session:
         pending = session.exec(
@@ -98,6 +99,8 @@ async def _score_pending_locked() -> int:
     scored = 0
     deadline = _time.monotonic() + config.llm.max_scoring_minutes * 60
     timed_out = False
+    log_activity("scoring", "started",
+                 f"{len(pending)} unscored jobs ({len(groups[0][1])} phd, {len(groups[1][1])} careers), model {model}")
 
     try:
         for group_name, batch, prof in work:
@@ -134,12 +137,19 @@ async def _score_pending_locked() -> int:
         from .matcher.llm import unload_all_models
         await unload_all_models(config.ollama_base_url)
 
+    left = len(pending) - scored
+    log_activity("scoring", "completed",
+                 f"scored {scored} of {len(pending)}"
+                 + (f" — time-box hit, {left} left for next pass" if timed_out else "")
+                 + " (models unloaded)")
     logger.info("Scoring pass done: %d/%d scored with %s (all models unloaded)", scored, len(pending), model)
     return scored
 
 
 async def run_search_pipeline() -> SearchRun:
+    from .activity import log_activity
     config = get_config()
+    log_activity("scan", "started", "daily scan: Serper + LinkedIn (jobspy) + GitHub")
     run = SearchRun()
 
     with Session(engine) as session:
@@ -264,10 +274,14 @@ async def run_search_pipeline() -> SearchRun:
                 session.add(db_run)
                 session.commit()
                 session.refresh(db_run)
+                log_activity("scan", "completed",
+                             f"found {len(raw_jobs)}, added {len(new_jobs)} new jobs"
+                             + (f" — {db_run.error_msg}" if db_run.error_msg else ""))
                 return db_run
 
     except Exception as exc:
         logger.exception("Search run %s failed: %s", run_id, exc)
+        log_activity("scan", "failed", str(exc)[:200])
         with Session(engine) as session:
             db_run = session.get(SearchRun, run_id)
             if db_run:

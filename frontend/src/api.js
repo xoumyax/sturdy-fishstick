@@ -35,6 +35,8 @@ export const api = {
   getCareerWatch: () => req("/config/career-watch"),
   updateCareerWatch: (data) => req("/config/career-watch", { method: "POST", body: JSON.stringify({ data }) }),
   getRuns: () => req("/runs"),
+  getLogs: () => req("/runs/logs"),
+  createJob: (body) => req("/jobs", { method: "POST", body: JSON.stringify(body) }),
   getStats: (mode) => req(`/config/stats${mode ? `?mode=${mode}` : ""}`),
   getTrends: (mode) => req(`/config/trends${mode ? `?mode=${mode}` : ""}`),
   getConfig: () => req("/config"),

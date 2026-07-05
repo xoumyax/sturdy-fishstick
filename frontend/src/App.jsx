@@ -5,14 +5,24 @@ import { FishingBackground } from "./components/FishingBackground";
 import { FloatingJobPanel } from "./components/FloatingJobPanel";
 import { LinkedInPanel } from "./components/LinkedInPanel";
 import { Dashboard } from "./pages/Dashboard";
+import { Logs } from "./pages/Logs";
 import { Settings } from "./pages/Settings";
 import { Tracker } from "./pages/Tracker";
 
 const NAV = [
   { id: "Dashboard", icon: DashIcon },
   { id: "Tracker",   icon: TrackerIcon },
+  { id: "Logs",      icon: LogsIcon },
   { id: "Settings",  icon: SettingsIcon },
 ];
+
+function LogsIcon({ active }) {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="9" />
+    </svg>
+  );
+}
 
 function DashIcon({ active }) {
   return (
@@ -292,7 +302,8 @@ export default function App() {
       {/* Main content — full width, padded top for hamburger button */}
       <main className="flex-1 min-h-screen w-full pt-14 relative" style={{ zIndex: 1 }}>
         {page === "Dashboard" && <Dashboard onChat={openChat} panelVis={panelVis} onShowPanel={showPanel} mode={mode} />}
-        {page === "Tracker"   && <Tracker mode={mode} />}
+        {page === "Tracker"   && <Tracker mode={mode} onChat={openChat} />}
+        {page === "Logs"      && <Logs />}
         {page === "Settings"  && <Settings mode={mode} />}
       </main>
 
