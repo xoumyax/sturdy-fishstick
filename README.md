@@ -74,6 +74,26 @@ deactivate
 
 (Quick alternative: drop PDFs into `Resume/Careers/` or `Resume/PhD/` at the repo root — they're extracted with pypdf automatically, with slightly rougher text than Docling.)
 
+### Apple Silicon vs. Intel Mac
+
+`requirements_pdfparser.txt` pins `torch==2.11.0`, which only resolves on Apple
+Silicon (and Linux/Windows). **On an Intel Mac (`uname -m` → `x86_64`) it will
+fail** — PyPI ships no PyTorch wheel past 2.2.2 for Intel macOS, and 2.2.2 in
+turn clashes with the modern numpy/transformers that current Docling pulls in.
+
+Two ways around it on Intel Mac:
+
+- **Easiest** — skip Docling and use the pypdf quick alternative above (drop the
+  PDF into `Resume/Careers/` or `Resume/PhD/`).
+- **For Docling quality** — get a newer PyTorch from conda-forge, which *does*
+  build for Intel macOS:
+  ```bash
+  conda create -n docling-pdf -c conda-forge python=3.12 pytorch torchvision -y
+  conda activate docling-pdf
+  pip install docling          # NOT requirements_pdfparser.txt
+  python parse_resume.py /path/to/resume.pdf --output MyCV___PHD.txt
+  ```
+
 ---
 
 ## Local models & memory
@@ -167,6 +187,7 @@ sturdy-fishstick/
 | Jobs stuck "unscored" | A scoring pass runs after each scan (watch Logs); or click **Score jobs (N)** on the Dashboard |
 | PhD dashboard scores look odd | Scores come from the `phd_profile` in `backend/phd_config.yaml` — make sure it's filled in |
 | Resume Tips: "no resume found" | Add `*___CAREER.txt` / `*___PHD.txt` to `backend/Resume/` (see Resumes above) |
+| `parse_resume.py` fails on Intel Mac | Pinned torch has no Intel-macOS wheel — use the conda-forge route or the pypdf drop-in (see [Resumes](#resumes-pdf-parsing)) |
 | Two backends running / weird scores | Always start via `./start.sh` — it kills stale processes first |
 | Ollama holding RAM | Passes unload everything when done; `ollama ps` should be empty when idle |
 | ngrok auth error | `ngrok config add-authtoken <token>` |
