@@ -526,7 +526,8 @@ async def crawl_career_pages(positions: list[str], expertise: list[str],
     return relevant
 
 
-async def crawl_phd_positions(serper_api_key: str, positions: list[str], institutions: list[str]) -> list[RawJob]:
+async def crawl_phd_positions(serper_api_key: str, positions: list[str], institutions: list[str],
+                              time_filter: str = "3months") -> list[RawJob]:
     """Search for PhD positions using Serper."""
     from .serper import SerperScraper
     if not serper_api_key:
@@ -535,7 +536,7 @@ async def crawl_phd_positions(serper_api_key: str, positions: list[str], institu
     # One query per institution — Serper calls are budgeted (serper_daily_cap)
     queries = [f"PhD {positions[0]} 2026 application {inst}" for inst in institutions] if positions else []
 
-    scraper = SerperScraper(api_key=serper_api_key, time_filter="month")
+    scraper = SerperScraper(api_key=serper_api_key, time_filter=time_filter)
     raw = await scraper.fetch(queries, max_results=10)
     for j in raw:
         j.source = "phd"

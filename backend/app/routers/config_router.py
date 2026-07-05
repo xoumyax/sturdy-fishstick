@@ -7,7 +7,7 @@ import yaml
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ..config import CONFIG_PATH, get_config, reload_config
+from ..config import CONFIG_PATH, PHD_CONFIG_PATH, get_config, reload_config
 from ..scheduler import reload_scheduler
 
 CAREER_WATCH_PATH = Path(__file__).parent.parent.parent / "data" / "career_watchlist.json"
@@ -92,18 +92,24 @@ def update_config(body: ConfigUpdate):
 _PHD_SECTION_RE = r"(?ms)^phd_profile:\n(?:^(?:[ \t].*)?\n?)*"
 
 
+def _phd_target_path():
+    """The PhD sections live in phd_config.yaml when that file exists."""
+    return PHD_CONFIG_PATH if PHD_CONFIG_PATH.exists() else CONFIG_PATH
+
+
 @router.get("/phd-profile")
 def get_phd_profile():
-    """Return the phd_profile section of config.yaml as a YAML string."""
+    """Return the phd_profile section (from phd_config.yaml if present)."""
     import re
-    raw = CONFIG_PATH.read_text()
+    raw = _phd_target_path().read_text()
     m = re.search(_PHD_SECTION_RE, raw)
-    return {"yaml_content": m.group(0).rstrip() + "\n" if m else ""}
+    return {"yaml_content": m.group(0).rstrip() + "\n" if m else "",
+            "file": _phd_target_path().name}
 
 
 @router.post("/phd-profile")
 def update_phd_profile(body: ConfigUpdate):
-    """Replace only the phd_profile section of config.yaml, preserving the rest verbatim."""
+    """Replace only the phd_profile section, preserving the rest verbatim."""
     import re
     try:
         parsed = yaml.safe_load(body.yaml_content)
@@ -117,16 +123,18 @@ def update_phd_profile(body: ConfigUpdate):
     if missing:
         raise HTTPException(status_code=400, detail=f"phd_profile missing fields: {missing}")
 
+    target = _phd_target_path()
     new_section = body.yaml_content.rstrip() + "\n"
-    raw = CONFIG_PATH.read_text()
+    raw = target.read_text()
     if re.search(_PHD_SECTION_RE, raw):
         raw = re.sub(_PHD_SECTION_RE, new_section, raw, count=1)
     else:
         raw = raw.rstrip() + "\n\n" + new_section
-    CONFIG_PATH.write_text(raw)
+    target.write_text(raw)
     new_cfg = reload_config()
 
-    return {"status": "reloaded", "phd_positions": len(new_cfg.phd_profile.positions) if new_cfg.phd_profile else 0}
+    return {"status": "reloaded", "file": target.name,
+            "phd_positions": len(new_cfg.phd_profile.positions) if new_cfg.phd_profile else 0}
 
 
 def _mode_clause(mode: str | None):

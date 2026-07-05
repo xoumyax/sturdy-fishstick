@@ -97,9 +97,13 @@ async def _crawl_linkedin_background():
 
     # PhD listings
     if config.phd_profile:
-        phd_terms = [f"PhD {e}" for e in config.phd_profile.expertise[:2]] or ["PhD machine learning"]
+        ps = config.phd_search
+        if ps.extra_keywords:
+            phd_terms = [kw if "phd" in kw.lower() else f"PhD {kw}" for kw in ps.extra_keywords[:2]]
+        else:
+            phd_terms = [f"PhD {e}" for e in config.phd_profile.expertise[:2]] or ["PhD machine learning"]
         phd_listings = await fetch_linkedin_listings(phd_terms, location=location)
-        total += _insert_jobs(phd_listings, track="phd", kind="listing")
+        total += _insert_jobs(_funding_filter(phd_listings, ps.funding_required), track="phd", kind="listing")
 
     # Hiring posts via Serper (1 credit per query, budget-capped)
     cap = config.search.serper_daily_cap
@@ -248,13 +252,34 @@ async def trigger_phd_crawl(background_tasks: BackgroundTasks):
     return {"status": "started", "message": "PhD crawl started"}
 
 
+_FUNDING_WORDS = ("funded", "funding", "assistantship", "fellowship", "studentship",
+                  "stipend", "scholarship", "salaried", "paid position")
+
+
+def _funding_filter(raw_jobs, required: bool):
+    """When phd_search.funding_required, keep only postings whose text
+    mentions funding. Academic-board results skip this (they're employment
+    contracts / studentships by nature)."""
+    if not required:
+        return raw_jobs
+    kept = [j for j in raw_jobs
+            if any(w in f"{j.title} {j.description or ''}".lower() for w in _FUNDING_WORDS)]
+    logger.info("Funding filter: %d/%d PhD results kept", len(kept), len(raw_jobs))
+    return kept
+
+
 async def _crawl_phd_background():
     import re
+    from datetime import date
     from ..scrapers.career_crawler import WATCHLIST_PATH, crawl_phd_positions
     config = get_config()
+    ps = config.phd_search
+    prof = config.phd_profile or config.profile
 
-    institutions = []
-    if WATCHLIST_PATH.exists():
+    # Institutions: phd_search whitelist first, then the markdown watchlist, then defaults
+    blacklist = {b.lower() for b in ps.institution_blacklist}
+    institutions = [i for i in ps.institution_whitelist if i.lower() not in blacklist]
+    if not institutions and WATCHLIST_PATH.exists():
         text = WATCHLIST_PATH.read_text(encoding="utf-8")
         section = re.search(r"## PhD Program Searches\n(.*?)(?=\n## |\Z)", text, re.DOTALL)
         if section:
@@ -263,17 +288,27 @@ async def _crawl_phd_background():
                     cells = [c.strip() for c in line.strip("|").split("|")]
                     if cells and cells[0]:
                         institutions.append(cells[0])
-
     if not institutions:
         institutions = ["CMU", "MIT", "Stanford", "UC Berkeley"]
 
-    raw_jobs = await crawl_phd_positions(
-        serper_api_key=config.serper_api_key,
-        positions=config.profile.positions,
-        institutions=institutions,
-    )
+    # Rotate a small daily window through the list so a long whitelist
+    # doesn't blow the Serper cap; full coverage over successive crawls.
+    window = max(1, config.search.serper_daily_cap - 2)
+    if len(institutions) > window:
+        start = (date.today().toordinal() * window) % len(institutions)
+        institutions = [institutions[(start + i) % len(institutions)] for i in range(window)]
+
+    raw_jobs = []
+    if "google_jobs" in ps.sources:
+        raw_jobs = await crawl_phd_positions(
+            serper_api_key=config.serper_api_key,
+            positions=prof.positions,
+            institutions=institutions,
+            time_filter=ps.time_filter,
+        )
+        raw_jobs = _funding_filter(raw_jobs, ps.funding_required)
     if not raw_jobs:
-        return
+        logger.info("PhD crawl: no Serper results (cap reached or filtered) — boards still run")
 
     with Session(engine) as session:
         existing_urls: set[str] = set(session.exec(select(Job.url)).all())
@@ -301,22 +336,27 @@ async def _crawl_phd_background():
         session.commit()
     logger.info("PhD crawl: %d new jobs from %d institutions", added, len(institutions))
 
-    # Academic boards (EURAXESS + jobs.ac.uk) — free, keyword-driven from phd_profile
+    # Keywords: phd_search.extra_keywords first, else derived from expertise
+    board_keywords = ps.extra_keywords[:3] or prof.expertise[:3] or ["machine learning"]
+
+    # Academic boards (EURAXESS + jobs.ac.uk) — free
     try:
         from ..scrapers.phd_boards import crawl_phd_boards
-        prof = config.phd_profile or config.profile
-        board_jobs = await crawl_phd_boards(prof.expertise[:3] or ["machine learning"])
+        board_jobs = await crawl_phd_boards(board_keywords)
         added += _insert_jobs(board_jobs, track="phd", kind="listing")
     except Exception as e:
         logger.warning("PhD boards crawl failed: %s", e)
 
     # PhD listings on LinkedIn too (jobspy, free)
-    if config.phd_profile:
+    if "linkedin" in ps.sources and config.phd_profile:
         try:
             from ..scrapers.jobspy_scraper import fetch_linkedin_listings
-            terms = [f"PhD {e}" for e in config.phd_profile.expertise[:2]] or ["PhD machine learning"]
+            if ps.extra_keywords:
+                terms = [kw if "phd" in kw.lower() else f"PhD {kw}" for kw in ps.extra_keywords[:3]]
+            else:
+                terms = [f"PhD {e}" for e in config.phd_profile.expertise[:2]] or ["PhD machine learning"]
             li = await fetch_linkedin_listings(terms)
-            added += _insert_jobs(li, track="phd", kind="listing")
+            added += _insert_jobs(_funding_filter(li, ps.funding_required), track="phd", kind="listing")
         except Exception as e:
             logger.warning("jobspy PhD listings failed: %s", e)
 

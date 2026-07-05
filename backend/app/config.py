@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 CONFIG_PATH = Path(__file__).parent.parent / "config.yaml"
+# Optional separate config for the PhD track (girlfriend's profile). When it
+# exists, its phd_profile and phd_search sections override config.yaml's.
+PHD_CONFIG_PATH = Path(__file__).parent.parent / "phd_config.yaml"
 
 
 @dataclass
@@ -32,6 +35,19 @@ class SearchConfig:
     company_blacklist: list[str]
     company_whitelist: list[str]
     serper_daily_cap: int = 10  # hard cap on Serper API calls per day (budget: 2500 / 6 months)
+
+
+@dataclass
+class PhdSearchConfig:
+    """Search knobs for the PhD track — pairs with phd_profile the way
+    `search` pairs with `profile`."""
+    sources: list[str] = field(default_factory=lambda: ["google_jobs"])
+    time_filter: str = "3months"  # PhD cycles are slower than job postings
+    max_results_per_query: int = 20
+    funding_required: bool = False  # only surface funded positions
+    extra_keywords: list[str] = field(default_factory=list)
+    institution_whitelist: list[str] = field(default_factory=list)
+    institution_blacklist: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -79,6 +95,7 @@ class Config:
     notifications: NotificationsConfig
     app: AppConfig
     phd_profile: ProfileConfig | None = None
+    phd_search: PhdSearchConfig = field(default_factory=PhdSearchConfig)
 
     # env-sourced
     serper_api_key: str = field(default_factory=lambda: os.environ.get("SERPER_API_KEY", ""))
@@ -105,6 +122,19 @@ def _parse_profile(p: dict) -> ProfileConfig:
     )
 
 
+def _parse_phd_search(ps: dict | None) -> PhdSearchConfig:
+    ps = ps or {}
+    return PhdSearchConfig(
+        sources=ps.get("sources") or ["google_jobs"],
+        time_filter=ps.get("time_filter", "3months"),
+        max_results_per_query=ps.get("max_results_per_query", 20),
+        funding_required=ps.get("funding_required", False),
+        extra_keywords=ps.get("extra_keywords") or [],
+        institution_whitelist=ps.get("institution_whitelist") or [],
+        institution_blacklist=ps.get("institution_blacklist") or [],
+    )
+
+
 def load_config() -> Config:
     raw = yaml.safe_load(CONFIG_PATH.read_text())
     p = raw["profile"]
@@ -115,10 +145,22 @@ def load_config() -> Config:
     n = raw.get("notifications", {})
     ne = n.get("email", {})
     phd_raw = raw.get("phd_profile")
+    phd_search_raw = raw.get("phd_search")
+
+    # Separate PhD config file wins over config.yaml's phd sections
+    if PHD_CONFIG_PATH.exists():
+        try:
+            phd_file = yaml.safe_load(PHD_CONFIG_PATH.read_text()) or {}
+            phd_raw = phd_file.get("phd_profile") or phd_raw
+            phd_search_raw = phd_file.get("phd_search") or phd_search_raw
+        except yaml.YAMLError as e:
+            import logging
+            logging.getLogger(__name__).warning("phd_config.yaml is invalid, using config.yaml sections: %s", e)
 
     return Config(
         profile=_parse_profile(p),
         phd_profile=_parse_profile(phd_raw) if phd_raw else None,
+        phd_search=_parse_phd_search(phd_search_raw),
         search=SearchConfig(
             sources=s["sources"],
             time_filter=s.get("time_filter", "month"),

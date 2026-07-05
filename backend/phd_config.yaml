@@ -1,0 +1,137 @@
+# =============================================================================
+# PhD-track config (Jen-Li Kao) — kept SEPARATE from backend/config.yaml.
+# When this file exists, its `phd_profile` and `phd_search` sections override
+# the ones in config.yaml. The Settings → PhD Profile editor writes to THIS
+# file. App-level settings (scheduler, llm, app, notifications) still come
+# from config.yaml only.
+# =============================================================================
+
+phd_search:
+  sources:
+    - google_jobs
+    - linkedin
+  time_filter: "3months"   # PhD cycles are slower than job postings
+  max_results_per_query: 20
+  funding_required: true   # only surface funded PhD / assistantship positions
+
+  extra_keywords:
+    - "fully funded PhD"
+    - "PhD studentship"
+    - "PhD assistantship"
+    - "computer vision"
+    - "medical imaging"
+    - "vision-language multimodal"
+    - "signal processing"
+
+  institution_whitelist:
+    # --- Medical Imaging / Radiology AI ---
+    - "Johns Hopkins University"        # ⭐ priority
+    - "Stanford University"
+    - "University of Pennsylvania"      # ⭐ priority
+    - "Vanderbilt University"
+    - "Emory University"
+    - "University of Iowa"
+    - "University of Rochester"
+    - "University of Pittsburgh"
+    - "Stony Brook University"
+    - "University of Houston"
+    # --- Computer Vision / VLM / Multimodal ---
+    - "Massachusetts Institute of Technology"
+    - "Carnegie Mellon University"
+    - "University of California, Berkeley"
+    - "University of Illinois Urbana-Champaign"
+    - "University of Texas at Austin"
+    - "University of California, San Diego"
+    - "Rice University"
+    - "Northeastern University"
+    - "Arizona State University"
+    - "University of Maryland"
+    - "Michigan State University"
+    # --- Signal Processing / MRI / Radar / ECE ---
+    - "Texas A&M University"
+    - "Virginia Tech"
+    - "New York University"
+    - "University of Michigan"
+    - "University of Wisconsin-Madison"
+    - "Purdue University"
+    - "Ohio State University"
+    - "University of Minnesota"
+
+  institution_blacklist: []
+
+# Keep phd_profile as the LAST section — the PhD Profile editor in Settings
+# rewrites this section in place via text splice.
+phd_profile:
+  name: "Jen-Li Kao"
+  positions:
+    - "Computer Vision"
+    - "Medical Imaging"
+    # General PhD intent
+    - "PhD Position"
+    - "Fully Funded PhD"
+    - "PhD Research Assistantship"
+    - "PhD Fellowship"
+    # Department
+    - "PhD Position Computer Science"
+    - "PhD Position Electrical and Computer Engineering"
+    # Research area (kept tight and on-focus)
+    - "PhD Position Computer Vision"
+    - "PhD Position Medical Image Analysis"
+    - "PhD Position Machine Learning"
+    - "PhD Position Vision-Language / Multimodal"
+    - "PhD Position LLM / NLP"
+    - "PhD Position Signal Processing"
+  expertise:
+    # Core research areas
+    - "Computer Vision"
+    - "medical AI"
+    - "Medical Imaging / Medical Image Analysis"
+    - "Image / 3D Reconstruction"
+    - "Vision-Language Modeling (VLM)"
+    - "Multimodal Learning"
+    - "Large Language Models (LLM)"
+    - "Signal Processing / DSP"
+    - "Radar Sensing (mmWave)"
+    - "MRI & Pulse-Sequence Imaging"
+    # Methods
+    - "Deep Learning"
+    - "Machine Learning"
+    - "CNNs & Vision Transformers"
+    - "Foundation Models"
+    - "Self-Supervised Learning"
+    - "LLM Fine-Tuning (SFT / RLHF / LoRA)"
+    - "Pose Estimation & Temporal Modeling"
+    - "Beamforming & Image Reconstruction"
+    - "Pattern Recognition & Data Analysis"
+    - "Model Evaluation / Benchmarking"
+    # Tools
+    - "PyTorch"
+    - "Python (NumPy, OpenCV, scikit-learn)"
+    - "CUDA / HPC (SLURM)"
+    - "C/C++ & MATLAB"
+  resume_summary: |
+    Prospective PhD applicant in Computer Science / Electrical & Computer Engineering,
+    with an MS in ECE from Texas A&M University and an MS in Computer Science from Chang
+    Gung University. Research interests span computer vision, medical imaging,
+    multimodal / vision-language models, LLM/VLM reasoning, and signal processing.
+
+    Currently an AI Engineer at We Share Baseball (Weichuan Dragons), building
+    computer-vision and deep-learning pipelines — pose estimation and temporal
+    feature modeling — to quantify pitching biomechanics (joint angles, shoulder
+    external rotation, limb loading) and flag elevated shoulder/elbow injury risk
+    from video. Also an ongoing research co-op at Texas A&M on an end-to-end
+    framework integrating LLM reasoning with AST-based structural parsing for
+    automated Sigma-rule generation.
+
+    First-author IEEE ECBIOS 2022 publication on multi-channel 62–69 GHz
+    millimeter-wave 3D breast-tumor imaging (Honorable Mention for the related
+    presentation at the SMIRS symposium). Additional research: MRI pulse-sequence
+    and hardware systems (RF control, gradient encoding, k-space/FFT imaging);
+    mmWave-radar DSP for contactless heart-rate and respiration sensing; and
+    deep-learning breast-cancer classification (SVM/GLCM vs. CNN/ResNet-Transformers).
+  location_preference:
+    - "United States"
+    - "Canada"
+    - "Europe"
+  remote_ok: false
+  relocation_ok: true
