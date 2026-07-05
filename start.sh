@@ -30,6 +30,7 @@ if [[ "$1" == "--remote" ]]; then
 
   # Start backend (serves API + built frontend)
   echo "Starting backend..."
+  pkill -f "uvicorn app.main:app" 2>/dev/null && sleep 1
   cd "$ROOT/backend"
   if [ ! -f ".env" ]; then
     echo "ERROR: backend/.env not found."
@@ -75,6 +76,9 @@ if [ ! -d ".venv" ]; then
   python3 -m venv .venv
   .venv/bin/pip install -q -r requirements.txt
 fi
+
+# Never allow two backends — orphaned processes corrupt scoring passes
+pkill -f "uvicorn app.main:app" 2>/dev/null && sleep 1
 
 echo "Starting backend on 0.0.0.0:8001 ..."
 .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8001 &

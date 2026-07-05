@@ -115,15 +115,19 @@ async def _score_pending_locked() -> int:
                     positions=prof.positions, expertise=prof.expertise,
                     resume_summary=prof.resume_summary,
                 )
+                # Never destroy data: a failed call (None) leaves the job
+                # untouched, and a job scored meanwhile (e.g. by another
+                # process) is not overwritten.
+                if score is None:
+                    continue
                 with Session(engine) as session:
                     db_job = session.get(Job, job.id)
-                    if db_job is None:
+                    if db_job is None or db_job.match_score is not None:
                         continue
                     db_job.match_score = score
                     db_job.match_reason = reason
-                    if score is not None:
-                        db_job.is_priority = score >= threshold
-                        scored += 1
+                    db_job.is_priority = score >= threshold
+                    scored += 1
                     session.add(db_job)
                     session.commit()
     finally:
