@@ -72,10 +72,24 @@ async def _score_pending_locked() -> int:
     if not pending:
         return 0
 
+    # PhD first: it's the smaller track and was starved to zero once;
+    # interleaving below keeps both tracks progressing within the time-box.
     groups = [
-        ("careers", [j for j in pending if j.track != "phd"], config.profile),
         ("phd", [j for j in pending if j.track == "phd"], config.phd_profile or config.profile),
+        ("careers", [j for j in pending if j.track != "phd"], config.profile),
     ]
+
+    # Interleave batches across tracks so the time-box can't starve one
+    # dashboard (careers-first + time-box left PhD permanently unscored).
+    from itertools import zip_longest
+    per_group = []
+    batch_size = config.llm.batch_size
+    for group_name, group_jobs, prof in groups:
+        per_group.append([
+            (group_name, group_jobs[i:i + batch_size], prof)
+            for i in range(0, len(group_jobs), batch_size)
+        ])
+    work = [item for round_ in zip_longest(*per_group) for item in round_ if item]
     model = config.llm.scoring_model or config.llm.model
     # Generous timeout: thinking models (qwen3) can take 30s+ on long descriptions
     matcher = OllamaMatcher(base_url=config.ollama_base_url, model=model, timeout=90.0)
@@ -86,38 +100,32 @@ async def _score_pending_locked() -> int:
     timed_out = False
 
     try:
-        for group_name, group_jobs, prof in groups:
-            if timed_out:
+        for group_name, batch, prof in work:
+            if _time.monotonic() > deadline:
+                logger.warning(
+                    "Scoring pass time-box (%d min) hit — %d jobs left for the next pass",
+                    config.llm.max_scoring_minutes, len(pending) - scored)
+                timed_out = True
                 break
-            for i in range(0, len(group_jobs), batch_size):
-                if _time.monotonic() > deadline:
-                    logger.warning(
-                        "Scoring pass time-box (%d min) hit — %d jobs left for the next pass",
-                        config.llm.max_scoring_minutes, len(pending) - scored)
-                    timed_out = True
-                    break
-                batch = group_jobs[i : i + batch_size]
-                # Score and commit one job at a time — progress is visible in
-                # the pending count immediately and survives interruptions.
-                for job in batch:
-                    score, reason = await matcher.score_job(
-                        title=job.title, company=job.company, description=job.description,
-                        positions=prof.positions, expertise=prof.expertise,
-                        resume_summary=prof.resume_summary,
-                    )
-                    with Session(engine) as session:
-                        db_job = session.get(Job, job.id)
-                        if db_job is None:
-                            continue
-                        db_job.match_score = score
-                        db_job.match_reason = reason
-                        if score is not None:
-                            db_job.is_priority = score >= threshold
-                            scored += 1
-                        session.add(db_job)
-                        session.commit()
-            if group_jobs:
-                logger.info("Scoring pass (%s): %d jobs processed", group_name, len(group_jobs))
+            # Score and commit one job at a time — progress is visible in
+            # the pending count immediately and survives interruptions.
+            for job in batch:
+                score, reason = await matcher.score_job(
+                    title=job.title, company=job.company, description=job.description,
+                    positions=prof.positions, expertise=prof.expertise,
+                    resume_summary=prof.resume_summary,
+                )
+                with Session(engine) as session:
+                    db_job = session.get(Job, job.id)
+                    if db_job is None:
+                        continue
+                    db_job.match_score = score
+                    db_job.match_reason = reason
+                    if score is not None:
+                        db_job.is_priority = score >= threshold
+                        scored += 1
+                    session.add(db_job)
+                    session.commit()
     finally:
         from .matcher.llm import unload_all_models
         await unload_all_models(config.ollama_base_url)

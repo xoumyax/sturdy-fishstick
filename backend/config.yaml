@@ -275,7 +275,7 @@ llm:
   scoring_model: "qwen3:1.7b"
   priority_threshold: 7
   batch_size: 10
-  max_scoring_minutes: 30
+  max_scoring_minutes: 240
 
 notifications:
   email:
