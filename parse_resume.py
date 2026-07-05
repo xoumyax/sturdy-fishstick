@@ -7,8 +7,12 @@ Usage:
     python parse_resume.py path/to/resume.pdf
     python parse_resume.py path/to/resume.docx --output my_resume.txt
 
-Requirements:
-    pip install docling
+Requirements (heavy — use a separate venv, not the app's backend/.venv):
+    python3 -m venv .venv-pdf && source .venv-pdf/bin/activate
+    pip install -r requirements_pdfparser.txt
+
+Tip: tag the output filename by track so the right dashboard loads it,
+e.g. --output MyResume___CAREER.txt or --output HerCV___PHD.txt
 """
 
 import argparse

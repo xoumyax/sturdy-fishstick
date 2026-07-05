@@ -1,24 +1,26 @@
-# 🐟 Sturdy Fishstick — Personal Job Radar
+# 🐟 Sturdy Fishstick — Personal Job & PhD Radar
 
-A self-hosted job search dashboard that automatically scrapes, scores, and organises job listings using a local LLM. Everything runs on your machine — no cloud, no subscriptions beyond a free API key.
+A self-hosted job search dashboard that automatically scrapes, scores, and organises listings using local LLMs. Everything runs on your machine — no cloud, no subscriptions beyond a free API key.
 
-> **New here?** Read [GUIDE.md](GUIDE.md) for a full step-by-step walkthrough, including a dedicated section for PhD position searches.
+It runs **two dashboards in one app**: **My Careers** (industry internships/jobs) and **PhD** (funded doctoral positions), each with its own profile, search config, scoring, tracker, and AI context. Switch with the toggle under the sidebar logo.
+
+> **New here?** Read [GUIDE.md](GUIDE.md) for a full step-by-step walkthrough, including the dedicated PhD-track setup.
 
 ---
 
 ## What it does
 
-- **Auto-scans** Google Jobs + LinkedIn 4× per day for roles matching your profile
-- **Scores each listing 0–10** using a local Ollama model against your skills and target roles
-- **Career page crawler** — scrapes Greenhouse, Lever, and custom career pages from your watchlist; falls back to Playwright for tricky sites
-- **GitHub Jobs feed** — pulls daily from `speedyapply/2026-SWE-College-Jobs`
-- **PhD search** — dedicated crawl for academic PhD and research positions
-- **Floating feed panels** — LinkedIn, Careers, and PhD side panels with company-grouped expanded view
-- **Groups listings by country** with one-click region filter cards
-- **Kanban tracker** for your application pipeline (Applied → Screening → Interview → Offer)
-- **AI cover letter and resume tips** generated locally via Ollama
-- **Fishstick AI chat** — ask anything about jobs, your resume, or the app
-- **Puff & Brownie** — two character companions for motivation and honest feedback
+- **Dual Mode** — My Careers / PhD toggle; every page, panel, feed, and AI feature is scoped to the active mode
+- **Daily auto-scan** — Google Jobs (Serper, budget-capped), real LinkedIn listings (jobspy, free), GitHub internship repos
+- **AI scoring 0–10** — a local model answers categorical questions (real job? level? field match? skills overlap?) mapped to a deterministic score; senior roles and aggregate pages are auto-filtered without an LLM call
+- **Career page crawler** — Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Recruitee JSON APIs; Playwright fallback for custom sites; **Discover** button finds new companies hiring for your keywords
+- **PhD search** — institution-whitelist Serper queries, academic boards (EURAXESS, jobs.ac.uk), PhD LinkedIn listings and hiring posts, optional funded-only filter
+- **LinkedIn feed** — Listings and hiring-Posts tabs, in both modes, fetched free via jobspy
+- **Logs page** — live view of every crawl/scan/scoring pass: running, done (with counts), or failed (with reason)
+- **Kanban tracker** — Applied → Screening → Interview → Offer, per mode, with **manual entry** for roles you applied to elsewhere; every card opens a full-detail drawer
+- **AI cover letters & resume tips** — generated locally against your actual (mode-specific) resume
+- **RAG chat** — Fishstick, Puff & Brownie answer with exact numbers from your database (FTS5 retrieval, no hallucinated counts); chats expand to half/full screen
+- **Serper budget guard** — hard daily cap (default 10 calls) with query rationing; a 2,500-credit budget lasts 6+ months
 - **Access from any device** — LAN mode and ngrok remote tunnel built in
 
 ---
@@ -27,10 +29,10 @@ A self-hosted job search dashboard that automatically scrapes, scores, and organ
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| Python | 3.11+ | `python3 --version` |
+| Python | 3.10+ | `python3 --version` |
 | Node.js | 18+ | `node --version` |
-| [Ollama](https://ollama.com) | latest | Runs the local LLM |
-| [Serper.dev](https://serper.dev) | free | 2 500 free searches/month |
+| [Ollama](https://ollama.com) | latest | Runs the local LLMs |
+| [Serper.dev](https://serper.dev) | free key | used sparingly — hard-capped per day |
 
 ---
 
@@ -40,7 +42,7 @@ A self-hosted job search dashboard that automatically scrapes, scores, and organ
 git clone <repo-url>
 cd sturdy-fishstick
 chmod +x setup.sh start.sh
-./setup.sh          # one-time: creates venv, installs deps, pulls phi3:mini
+./setup.sh          # one-time: venv, deps, pulls qwen3:1.7b + LFM2.5-1.2B
 ```
 
 Add your Serper key to `backend/.env`:
@@ -48,112 +50,78 @@ Add your Serper key to `backend/.env`:
 SERPER_API_KEY=your_key_here
 ```
 
-Edit your profile in `backend/config.yaml`, then:
+Edit your profile in `backend/config.yaml` (and the PhD profile in `backend/phd_config.yaml`), then:
 ```bash
 ./start.sh
 ```
 
-Open **http://localhost:5173**.
+Open **http://localhost:5173** (dev) or **http://localhost:8001** (built UI).
 
 ---
 
-## Access from other devices
+## Resumes (PDF parsing)
 
-**Same network (office or home LAN):**
+The AI features (Resume Tips, cover letters, chat) read plain-text resumes from `backend/Resume/`. Tag filenames by track: `MyResume___CAREER.txt`, `HerCV___PHD.txt` — each mode loads only its own.
+
+To convert a PDF/DOCX (or any document) to clean text, use the bundled **Docling** parser. It has its own, heavier dependency set — install it in a **separate environment** from `requirements_pdfparser.txt`:
+
 ```bash
-./start.sh
-# prints the LAN URL — open http://10.x.x.x:5173 on any device on your network
+python3 -m venv .venv-pdf && source .venv-pdf/bin/activate
+pip install -r requirements_pdfparser.txt
+python parse_resume.py /path/to/resume.pdf        # → backend/Resume/resume.txt
+deactivate
 ```
 
-**Different network (internet, mobile hotspot, remote office):**
-```bash
-# one-time: brew install ngrok && ngrok config add-authtoken <your-token>
-./start.sh --remote
-# builds frontend, serves everything from port 8001, opens ngrok tunnel
-# copy the https://xxxx.ngrok-free.app URL — works from anywhere
-```
+(Quick alternative: drop PDFs into `Resume/Careers/` or `Resume/PhD/` at the repo root — they're extracted with pypdf automatically, with slightly rougher text than Docling.)
 
 ---
 
-## Ollama memory usage
+## Local models & memory
 
-The model loads only when actively needed:
+| Role | Model | Disk | Behaviour |
+|------|-------|------|-----------|
+| Scoring (batch) | `qwen3:1.7b` (thinking) | 1.4 GB | loaded once per pass, **unloaded after** |
+| Generation & chat | `LFM2.5-1.2B-Instruct` | 0.7 GB | loads on demand, auto-unloads after 5 min idle |
 
-| State | Memory |
-|-------|--------|
-| Idle (between scans) | **0 GB** — unloads 2 min after last scoring call |
-| During a scheduled scan | ~7 GB for ~5 minutes |
-| Active chat or cover letter session | ~7 GB, unloads 5 min after last message |
-
-Model: `phi3:mini` (~2.2 GB on disk). Switch in `config.yaml` or Settings → Config, then `ollama pull <model>`.
+Scoring passes are single-flight (never stack) and time-boxed (`llm.max_scoring_minutes`); every pass ends by evicting **all** loaded models, so RAM is free between runs. Model choices and the benchmark behind them: [future.md](future.md) — including the upgrade path for a bigger machine.
 
 ---
 
-## Configuration reference (`backend/config.yaml`)
+## Configuration
+
+**`backend/config.yaml`** — app settings + your careers profile:
 
 ```yaml
-profile:
-  name: "Your Name"
-  positions:
-    - "Software Engineer Intern"
-    - "Machine Learning Engineer Intern"
-  expertise:
-    - "Python"
-    - "PyTorch"
-  resume_summary: |
-    Your background paragraph used by the LLM for scoring.
-  location_preference:
-    - "United States"
-    - "Germany"
-  remote_ok: true
-  relocation_ok: false
-
+profile:            # name, positions, expertise, resume_summary, locations
 search:
-  sources: [google_jobs, linkedin]
-  time_filter: "month"          # week | month | 3months
-  max_results_per_query: 20
-  extra_keywords: []
-  company_blacklist: []
-  company_whitelist: []
-
+  sources: [google_jobs]
+  serper_daily_cap: 10        # hard cap on Serper API calls per day
+  time_filter: "month"
+  company_whitelist: []       # optional
 scheduler:
-  times: ["08:00", "12:00", "17:00", "21:00"]
+  times: ["08:00"]            # one scan per day keeps the budget safe
   timezone: "America/Chicago"
-
 llm:
-  model: "phi3:mini"
-  priority_threshold: 7         # score >= this → Priority badge
-  batch_size: 10
-
+  model: "hf.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF:latest"
+  scoring_model: "qwen3:1.7b"
+  priority_threshold: 7
+  max_scoring_minutes: 240    # time-box per scoring pass
 notifications:
-  email:
-    enabled: false
-    to: "you@example.com"
-    from_addr: "you@gmail.com"
-    smtp_host: "smtp.gmail.com"
-    smtp_port: 587
-    score_threshold: 8
+  email: { enabled: false }   # Gmail app-password based, optional
 ```
 
----
+**`backend/phd_config.yaml`** — the PhD track, kept separate so two people can share one install:
 
-## Career page watchlist
-
-Upload a JSON file in **Settings → Career Watch** to crawl specific company career pages directly:
-
-```json
-{
-  "Frontier AI Labs": [
-    { "name": "Anthropic", "url": "https://www.anthropic.com/careers" },
-    { "name": "OpenAI",    "url": "https://openai.com/careers/" }
-  ],
-  "Big Tech": [
-    { "name": "Google", "url": "https://careers.google.com/" }
-  ]
-}
+```yaml
+phd_search:
+  time_filter: "3months"       # PhD cycles are slower
+  funding_required: true       # only surface funded positions
+  extra_keywords: ["fully funded PhD", "computer vision", ...]
+  institution_whitelist: ["Johns Hopkins University", ...]
+phd_profile:                   # name, positions, expertise, resume_summary
 ```
 
-ATS detection (Greenhouse, Lever) is automatic from the URL. Companies with custom career sites fall back to Playwright headless scraping. A 71-company example is in `company_careers.json`.
+When `phd_config.yaml` exists, its sections override `config.yaml`'s. The Settings → PhD Profile editor writes to it directly.
 
 ---
 
@@ -163,28 +131,29 @@ ATS detection (Greenhouse, Lever) is automatic from the URL. Companies with cust
 sturdy-fishstick/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py            # FastAPI app + SPA serving in remote mode
-│   │   ├── config.py          # config.yaml + .env loader
-│   │   ├── database.py        # SQLite engine, migrations, country backfill
-│   │   ├── models/            # Job, SearchRun SQLModel tables
-│   │   ├── routers/           # jobs, chat, config_router, runs, search
-│   │   ├── scrapers/          # serper, linkedin_scraper, career_crawler, github_jobs
-│   │   ├── matcher/llm.py     # Scoring, cover letters, resume advice (Ollama)
-│   │   ├── notifications.py   # Email + iCal sender
-│   │   └── scheduler.py       # APScheduler pipeline
-│   ├── data/
-│   │   ├── jobradar.db            # SQLite (auto-created)
-│   │   └── career_watchlist.json  # Uploaded via Settings
-│   ├── Resume/                # .txt / .md resumes for AI features
-│   ├── config.yaml            # Main config — edit this
-│   └── .env                   # Secrets — never commit
-├── frontend/src/
-│   ├── pages/                 # Dashboard, Tracker, Settings
-│   └── components/            # JobCard, ChatPanel, FloatingJobPanel, …
-├── company_careers.json       # 71-company example watchlist
-├── parse_resume.py            # PDF/DOCX → backend/Resume/
-├── setup.sh                   # One-time setup
-└── start.sh                   # Dev launch; --remote for ngrok mode
+│   │   ├── main.py              # FastAPI app + SPA serving
+│   │   ├── config.py            # config.yaml + phd_config.yaml + .env loader
+│   │   ├── database.py          # SQLite engine, migrations
+│   │   ├── scheduler.py         # daily pipeline + single-pass scoring
+│   │   ├── serper_budget.py     # daily API-call cap
+│   │   ├── activity.py          # activity log (Logs page)
+│   │   ├── rag.py               # FTS5 retrieval for the chat assistants
+│   │   ├── resumes.py           # mode-aware resume loading
+│   │   ├── matcher/llm.py       # categorical scoring, cover letters, advice
+│   │   ├── models/              # Job (kind/track), SearchRun, ActivityEvent
+│   │   ├── routers/             # jobs, chat, config, runs+logs, search
+│   │   └── scrapers/            # serper, jobspy, career ATS, phd boards, github
+│   ├── config.yaml              # main config — edit this
+│   ├── phd_config.yaml          # PhD track (profile + phd_search)
+│   ├── Resume/                  # *___CAREER.txt / *___PHD.txt resumes
+│   └── .env                     # secrets — never commit
+├── frontend/src/                # React/Vite/Tailwind (Dashboard, Tracker, Logs, Settings)
+├── company_careers.json         # example 71-company watchlist
+├── parse_resume.py              # any document → text (Docling)
+├── requirements_pdfparser.txt   # deps for parse_resume.py (separate venv!)
+├── future.md                    # model benchmark + upgrade path
+├── setup.sh / start.sh          # setup & launch (start.sh kills stale backends)
+└── PLAN.md                      # feature roadmap history
 ```
 
 ---
@@ -193,13 +162,14 @@ sturdy-fishstick/
 
 | Symptom | Fix |
 |---------|-----|
-| No jobs after scan | Check `SERPER_API_KEY` in `backend/.env`; see run history in Settings → Run History |
-| Ollama times out | Reduce `batch_size` in config, or switch to a faster model |
-| "By Region" shows only Other | Restart backend once — country backfill runs on startup |
-| Resume Tips: "no resume found" | Run `python parse_resume.py resume.pdf` or drop a `.txt` into `backend/Resume/` |
-| Career crawl returns 0 for a company | Playwright fallback will try the URL directly; check logs for details |
-| ngrok auth error | `ngrok config add-authtoken <token>` — get token from dashboard.ngrok.com |
-| Port 8001 in use | Change `app.port` in `config.yaml` |
+| No new jobs after scan | Check the **Logs** page first — it shows every step with counts and errors |
+| "Serper daily cap reached" | By design — the budget guard; raise `search.serper_daily_cap` if you have credits to spare |
+| Jobs stuck "unscored" | A scoring pass runs after each scan (watch Logs); or click **Score jobs (N)** on the Dashboard |
+| PhD dashboard scores look odd | Scores come from the `phd_profile` in `backend/phd_config.yaml` — make sure it's filled in |
+| Resume Tips: "no resume found" | Add `*___CAREER.txt` / `*___PHD.txt` to `backend/Resume/` (see Resumes above) |
+| Two backends running / weird scores | Always start via `./start.sh` — it kills stale processes first |
+| Ollama holding RAM | Passes unload everything when done; `ollama ps` should be empty when idle |
+| ngrok auth error | `ngrok config add-authtoken <token>` |
 
 ---
 

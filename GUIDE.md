@@ -2,7 +2,7 @@
 
 This guide walks you through setting up, configuring, and using the app from scratch. It is written for someone who has never run it before.
 
-There is a dedicated section at the end — **[Setting it up for PhD search](#phd)** — written for a PhD applicant who wants to use the app to find research positions and PhD openings.
+The app has **two dashboards in one**: **My Careers** (industry internships and jobs) and **PhD** (funded doctoral positions). They share the install but have separate profiles, search settings, resumes, scoring, and trackers — so two people can run their searches side by side. The dedicated section at the end — **[The PhD track](#phd)** — explains the PhD side.
 
 ---
 
@@ -11,165 +11,131 @@ There is a dedicated section at the end — **[Setting it up for PhD search](#ph
 1. [What you need before you start](#1-what-you-need-before-you-start)
 2. [Installation](#2-installation)
 3. [Configuration — your profile](#3-configuration--your-profile)
-4. [Adding your resume](#4-adding-your-resume)
+4. [Adding your resume (PDF parsing)](#4-adding-your-resume-pdf-parsing)
 5. [Running the app](#5-running-the-app)
 6. [Using the dashboard](#6-using-the-dashboard)
-7. [Career page crawling](#7-career-page-crawling)
-8. [Tracker (Kanban)](#8-tracker-kanban)
-9. [Fishstick AI and character companions](#9-fishstick-ai-and-character-companions)
-10. [Accessing from other devices](#10-accessing-from-other-devices)
-11. [Email notifications (optional)](#11-email-notifications-optional)
-12. [Setting it up for PhD search](#phd)
+7. [Where jobs come from](#7-where-jobs-come-from)
+8. [How AI scoring works](#8-how-ai-scoring-works)
+9. [Tracker — including manual entries](#9-tracker--including-manual-entries)
+10. [Logs — monitoring everything](#10-logs--monitoring-everything)
+11. [Fishstick AI and character companions](#11-fishstick-ai-and-character-companions)
+12. [Serper budget](#12-serper-budget)
+13. [Accessing from other devices](#13-accessing-from-other-devices)
+14. [Email notifications (optional)](#14-email-notifications-optional)
+15. [The PhD track](#phd)
 
 ---
 
 ## 1. What you need before you start
 
-### Required tools
+**Python 3.10+** — `python3 --version` · https://www.python.org/downloads/
 
-**Python 3.11 or newer**
-```bash
-python3 --version
-# should print Python 3.11.x or higher
-```
-If not installed: https://www.python.org/downloads/
+**Node.js 18+** — `node --version` · https://nodejs.org/
 
-**Node.js 18 or newer**
-```bash
-node --version
-# should print v18.x or higher
-```
-If not installed: https://nodejs.org/
+**Ollama** — runs the AI models locally, no GPU required. Download from https://ollama.com, then confirm with `ollama --version`.
 
-**Ollama** — runs the AI model locally on your machine. No GPU required.
-1. Download from https://ollama.com
-2. Install it (drag to Applications on Mac, run the installer on Windows/Linux)
-3. Confirm it works:
-```bash
-ollama --version
-```
-
-**A Serper.dev account** — this is how the app searches Google Jobs and LinkedIn.
-1. Go to https://serper.dev and create a free account (no credit card)
-2. The free tier gives you 2 500 searches per month, which is more than enough
-3. Copy your API key from the dashboard — you will need it in step 2
+**A Serper.dev API key** — how the app searches Google. Create a free account at https://serper.dev and copy the key. The app is aggressive about conserving these credits (see [Serper budget](#12-serper-budget)).
 
 ---
 
 ## 2. Installation
 
-### Clone the repo
 ```bash
 git clone <repo-url>
 cd sturdy-fishstick
-```
-
-### Run setup
-```bash
 chmod +x setup.sh start.sh
 ./setup.sh
 ```
 
-This script does the following:
-- Checks Python 3.11+ and Node 18+
-- Creates `backend/.venv` (isolated Python environment)
-- Installs all Python dependencies
-- Copies `backend/.env.example` to `backend/.env` if it does not exist
-- Pulls the `phi3:mini` model into Ollama (~2.2 GB download, one time only)
-- Runs `npm install` in the frontend
-- Creates `backend/Resume/` and `backend/data/` directories
+Setup creates `backend/.venv`, installs Python and Node dependencies, and pulls the two local models:
+- `qwen3:1.7b` (~1.4 GB) — scores jobs
+- `LFM2.5-1.2B-Instruct` (~0.7 GB) — writes cover letters, resume tips, and chats
 
-### Add your Serper API key
-Open `backend/.env` in any text editor and set:
+Then add your Serper key to `backend/.env`:
 ```
 SERPER_API_KEY=paste_your_key_here
 ```
-This is the only required secret. Everything else is optional.
 
 ---
 
 ## 3. Configuration — your profile
 
-Open `backend/config.yaml`. This is the main configuration file. You do not need to touch anything except the `profile` section to get started.
+There are **two config files**:
 
-### Profile fields
+| File | Contains |
+|------|----------|
+| `backend/config.yaml` | App settings (scheduler, LLM, budget) + the **My Careers** profile |
+| `backend/phd_config.yaml` | The **PhD** profile + `phd_search` settings — overrides config.yaml's PhD sections when present |
+
+### Careers profile (`config.yaml`)
 
 ```yaml
 profile:
   name: "Your Name"
-
-  positions:
+  positions:                    # drives search queries — be specific
     - "Software Engineer Intern"
     - "Machine Learning Engineer Intern"
-    - "Data Science Intern"
-
-  expertise:
+  expertise:                    # used for search AND scoring
     - "Python"
-    - "Machine Learning"
     - "PyTorch"
-    - "SQL"
-
   resume_summary: |
-    Write 2–4 sentences about yourself here. This text is sent to the AI
-    when scoring each job, so be specific. Include your degree, key skills,
-    relevant experience, and what type of role you want.
-    Example: "MS Computer Science student specialising in machine learning.
-    Strong Python, PyTorch, computer vision. Looking for summer 2026
-    research or engineering internships in the US or Germany."
-
-  location_preference:
-    - "United States"
-    - "Germany"
-    - "Canada"
-
+    2–4 sentences about yourself. Sent to the AI when scoring each job.
+    Degree, key skills, experience, what role you want.
+  location_preference: ["United States", "Germany"]
   remote_ok: true
   relocation_ok: false
 ```
 
-**Tips:**
-- `positions` drives the search queries. Be specific — "Software Engineer Intern" works better than just "Software Engineer"
-- `expertise` is used both for search and for AI scoring. List actual skills, not vague terms
-- `location_preference` can be a single country or a list. Each country gets its own region card on the dashboard
-- The `resume_summary` is the single most important field for score quality. Write it as if you were introducing yourself in a cover letter
+The **first few `expertise` items define your specialization** — the scorer gives "strong field match" only to jobs focused on them, so put your niche (e.g. "LLM Post-Training") before generic skills (e.g. "Python").
 
-### Scheduler
+### Scheduler & LLM (`config.yaml`)
 
-By default the app scans 4 times per day. The times are in your local timezone:
 ```yaml
 scheduler:
-  times: ["08:00", "12:00", "17:00", "21:00"]
+  times: ["08:00"]              # one scan/day — protects the Serper budget
   timezone: "America/Chicago"
-```
 
-Change `timezone` to your own: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
-
-### Score threshold
-
-Jobs scoring at or above `priority_threshold` get a Priority badge and appear at the top of the list:
-```yaml
 llm:
-  priority_threshold: 7    # 0–10, default 7
+  model: "hf.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF:latest"
+  scoring_model: "qwen3:1.7b"
+  priority_threshold: 7         # score >= this → Priority badge
+  batch_size: 10
+  max_scoring_minutes: 240      # a scoring pass stops after this; leftovers next pass
 ```
+
+You can edit all of this in the browser too: **Settings → Config**, with hot reload.
 
 ---
 
-## 4. Adding your resume
+## 4. Adding your resume (PDF parsing)
 
-The resume enables two features:
-- **Resume Tips** — the AI compares your resume against a job description and gives section-by-section advice
-- **Cover Letter** — the AI writes a tailored letter drawing on your actual experience
+Resumes power **Resume Tips**, **Cover Letters**, and give the chat real context. They live as plain text in `backend/Resume/`, tagged by track in the filename:
 
-### Parse a PDF or DOCX
-
-```bash
-python parse_resume.py /path/to/your/resume.pdf
+```
+backend/Resume/
+├── MyResume___CAREER.txt      ← loaded in My Careers mode
+├── SecondResume___CAREER.txt  ← multiple per track is fine
+└── HerCV___PHD.txt            ← loaded in PhD mode
 ```
 
-This saves a plain-text version to `backend/Resume/resume.txt`. You can run it multiple times with different files — all files in `backend/Resume/` are loaded together (useful if you have separate CV versions).
+### Converting a PDF (or DOCX, PPTX, HTML…) to text
 
-### Or copy-paste manually
+The bundled parser uses **Docling** for high-quality extraction. Its dependencies are heavy (PyTorch etc.), so install them from **`requirements_pdfparser.txt`** in a **separate virtual environment** — do *not* mix them into the app's venv:
 
-Drop any `.txt` or `.md` file into `backend/Resume/`. The filename does not matter.
+```bash
+python3 -m venv .venv-pdf
+source .venv-pdf/bin/activate
+pip install -r requirements_pdfparser.txt
+
+python parse_resume.py /path/to/resume.pdf
+# → backend/Resume/resume.txt   (rename to resume___CAREER.txt or ___PHD.txt)
+
+deactivate
+```
+
+Run it once per document; you only need the `.venv-pdf` environment when parsing.
+
+**Quick alternative:** drop PDFs into `Resume/Careers/` or `Resume/PhD/` at the repo root — the app extracts them automatically with pypdf. Docling output is cleaner, so prefer the parser for your "real" resumes.
 
 ---
 
@@ -179,204 +145,176 @@ Drop any `.txt` or `.md` file into `backend/Resume/`. The filename does not matt
 ./start.sh
 ```
 
-Then open **http://localhost:5173** in your browser.
+Open **http://localhost:5173** (dev) or **http://localhost:8001** (the built UI — what remote devices see). Stop with `Ctrl+C`.
 
-The first scan runs automatically if the last run was more than 2 hours ago. You can also trigger one manually from the dashboard (see section 6).
-
-**To stop:** press `Ctrl+C` in the terminal.
+`start.sh` also kills any stale backend processes before starting — always launch through it rather than running uvicorn by hand.
 
 ---
 
 ## 6. Using the dashboard
 
-### Stats bar (top)
+### The mode toggle
 
-Four cards show live counts. Click any card to filter the job list:
+Under the logo in the sidebar: **My Careers / PhD**. Everything on screen — stats, job list, trends, feeds, tracker, chat context, even the background theme (teal sea vs. indigo deep-sea) — follows the active mode. Your choice persists across restarts.
 
-| Card | What it shows |
-|------|---------------|
-| New today | Jobs found in the last 24 hours |
-| Priority | Jobs scored ≥ your priority threshold |
-| Applied | Jobs you have marked as applied |
-| Total | Everything (click to clear filters) |
+### Stats bar
 
-Click the same card a second time to clear the filter.
+Four clickable metric cards (New today / Priority / Applications / Total), scoped to the mode. The main button is **Scan now** in Careers mode and **Crawl PhD** in PhD mode.
 
-### By Region
+### Job list & detail drawer
 
-A scrollable row of country cards appears when you have jobs from multiple countries. Click a card to filter to that country. Click **Clear** at the top right, or click the active card again, to reset.
+Each card shows company, title, score, country, source, and age.
 
-### Job list
+- **Wide screens:** clicking a card opens a **detail drawer on the right** — full description, match reason, status pills, deadline, notes, and the AI buttons. `Esc` closes it.
+- **Narrow screens:** cards expand inline instead.
 
-Each card shows: company initial, job title, match score, country, source tag, and when it was found.
-
-**Click any card to expand it.** Inside the expanded view:
+Inside the details:
 
 | Action | What it does |
 |--------|-------------|
-| Status pills | Move through: New → Saved → Applied → Screening → Interview → Offer / Rejected |
-| ✦ Cover Letter | Generates a tailored cover letter via the local AI |
-| 📄 Resume Tips | AI reviews your resume against this specific job |
-| Deadline | Set an application deadline; card border turns amber when ≤ 7 days remain |
-| Notes | Freeform notes, saved immediately |
-| Ask AI | Opens the Fishstick chat with this job as context |
-| Delete (🗑) | Hover the card to reveal a delete button; two clicks to confirm |
+| Status pills | New → Saved → Applied → Screening → Interview → Offer / Rejected |
+| ✦ Cover Letter | Tailored letter via the local AI (uses your mode's resume + profile) |
+| 📄 Resume Tips | AI reviews your resume against this job |
+| Ask AI | Opens Fishstick chat with this job attached |
+| Deadline / Notes | Saved immediately; amber border when ≤ 7 days remain |
 
-### Crawl buttons
+**Score slider note (PhD mode):** unscored positions stay visible at any threshold so a fresh crawl never looks empty; once everything is scored the slider filters strictly.
 
-Two manual crawl buttons sit above the job list:
+### Buttons above the list
 
-- **Crawl Careers** — immediately runs the career page crawler across all companies in your watchlist (see section 7)
-- **Crawl PhD** — runs a dedicated PhD/research position search (see the [PhD section](#phd))
+- **Crawl Careers** (Careers mode) / **Crawl PhD** (PhD mode) — manual crawls
+- **Score jobs (N)** — appears when jobs await scoring; live "Scoring… N left" progress; turns into a green **All scored** chip at zero
 
-### Floating side panels
+### Floating feed panels (bottom right)
 
-Three floating panels sit on the right edge of the screen:
+| Panel | Mode | Contents |
+|-------|------|----------|
+| LinkedIn | both | **Listings** and hiring-**Posts** tabs, mode-scoped, with a **Fetch** button |
+| Careers | Careers | career-page crawl results |
+| PhD | PhD | PhD positions |
 
-| Panel | What it shows |
-|-------|---------------|
-| LinkedIn | Jobs from LinkedIn sources |
-| Careers | Jobs from career page crawls (career_page source) |
-| PhD | PhD/research positions |
-
-Each panel has a mini view (top 20 by score) and an expand button (⤢) that opens a full-screen modal with all listings **grouped by company**. This makes it easy to see how many open roles a specific employer has at a glance.
-
-### Trends view
-
-Click **Trends** in the view switcher above the job list to see:
-- Weekly bar chart (new jobs and priority matches per week, last 4 weeks)
-- Day-by-day breakdown (last 14 days)
-- Country breakdown bar chart
-
-### Deleting noise
-
-If a job is irrelevant, hover the card and click the trash icon. The first click turns the button red as a warning; the second click removes the job permanently. This is useful after a crawl brings in off-topic listings.
+The expand button (⤢) opens a full view with **collapsed company cards** — click a company to unfold its listings.
 
 ---
 
-## 7. Career page crawling
+## 7. Where jobs come from
 
-The scheduler's main scan uses Google Jobs and LinkedIn. The career page crawler is a separate, targeted scrape of specific company career pages.
+| Source | Cost | When |
+|--------|------|------|
+| Google Jobs (Serper) | budget-capped API calls | daily scan — a rotating window of your queries |
+| LinkedIn listings (jobspy) | free | daily scan + LinkedIn panel Fetch |
+| LinkedIn hiring posts (Serper) | 1–2 calls | LinkedIn crawl |
+| GitHub intern repos | free | every scan |
+| Career pages (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Recruitee) | free JSON APIs | Crawl Careers |
+| Academic boards (EURAXESS, jobs.ac.uk) | free | Crawl PhD |
+| Playwright headless browser | free | fallback for stubborn career pages |
 
-### How to set it up
+### Career page watchlist
 
-1. Go to **Settings → Career Watch**
-2. Click **Upload JSON** and select your company list file
+Upload a JSON in **Settings → Career Watch** (`company_careers.json` is a 71-company example):
 
-The file format is simple:
 ```json
 {
   "Frontier AI Labs": [
-    { "name": "Anthropic", "url": "https://www.anthropic.com/careers" },
-    { "name": "OpenAI",    "url": "https://openai.com/careers/" }
-  ],
-  "Big Tech": [
-    { "name": "Google", "url": "https://careers.google.com/" },
-    { "name": "Meta",   "url": "https://www.metacareers.com/" }
+    { "name": "Anthropic", "url": "https://www.anthropic.com/careers" }
   ]
 }
 ```
 
-Categories are just labels — you can name them anything. Each entry needs a `name` and a `url`.
-
-A ready-to-use 71-company file is included in the repo at `company_careers.json`. Upload it as a starting point and customise from there.
-
-### How it works under the hood
-
-- If the URL is a **Greenhouse** board (e.g. `boards.greenhouse.io/anthropic`), it hits their JSON API directly — fast and reliable
-- If the URL is a **Lever** board (e.g. `jobs.lever.co/mistral-ai`), same thing
-- For other companies, it uses domain-to-ATS mapping (e.g. `anthropic.com` → Greenhouse slug `anthropic`)
-- If the API returns a 404 (wrong slug, company changed ATS), **Playwright** launches a headless Chrome browser, visits the page, and extracts job links from the rendered DOM
-- Companies with no known ATS fall back to Serper site-search (`site:company.com Software Engineer intern 2026`)
-
-### Running it
-
-Click **Crawl Careers** on the dashboard, or wait for it to run in the scheduled pipeline. New jobs appear in the **Careers** floating panel, tagged with source `career_page`.
+ATS platforms are auto-detected from URLs. The **Discover** button finds companies hiring for your profile keywords on Greenhouse/Lever/Ashby boards (uses ≤6 Serper credits) and adds them under a "Discovered" category.
 
 ---
 
-## 8. Tracker (Kanban)
+## 8. How AI scoring works
 
-Click **Tracker** in the sidebar. Jobs you have moved out of New status appear here as cards in columns:
+Every new job gets scored 0–10 against your profile, in a single background pass covering both modes:
+
+1. **Prefilter (no AI):** senior/staff/manager titles → 1; aggregate pages ("1,000+ jobs…", social posts) → 0.
+2. **Categorical judgment:** the scoring model answers four questions — real job? intern/early/senior? field match strong/partial/none? skills overlap high/medium/low — and the score is computed deterministically from the answers. Small local models are much more reliable this way than when asked for a number directly.
+3. Careers jobs are scored against `profile`, PhD jobs against `phd_profile`. Batches alternate between the tracks so neither waits.
+4. The pass is single-flight (never two at once), time-boxed (`max_scoring_minutes`), and **unloads all models when done** — RAM is free between runs.
+
+Score ≥ `priority_threshold` (default 7) earns the Priority badge. Watch progress on the **Logs** page or the Dashboard's "Scoring… N left" button.
+
+---
+
+## 9. Tracker — including manual entries
+
+Sidebar → **Tracker**. A Kanban board per mode:
 
 ```
 Applied → Screening → Interview → Offer
                                 → Rejected
 ```
 
-Drag cards between columns. Each card shows the company, title, score, and your notes. The tracker is a focused view — it only shows jobs you are actively pursuing.
+- **Drag** cards between columns.
+- **Click** a card to open the full detail drawer (description, notes, deadline, AI tools).
+- **➕ Add application** (top right) — record a role you applied to **outside the app**: title, company (or university/lab in PhD mode), URL, location, status, deadline, and notes. It's stored like any other job (source "manual") and gets the same drawer, notes, and AI features.
 
 ---
 
-## 9. Fishstick AI and character companions
+## 10. Logs — monitoring everything
 
-### Fishstick AI (main assistant)
+Sidebar → **Logs**. Live view (auto-refreshes every 10 s) of everything the app does:
 
-Click **Ask Fishstick** in the sidebar. The assistant has access to:
-- Your profile and resume
-- All jobs in your database
-- Full knowledge of the app's features
+- **Counter tiles:** jobs awaiting score (pulses while scoring), PhD positions scored, Serper credits used today vs. cap, tasks running.
+- **Event feed:** every scan, career/PhD/LinkedIn crawl, and scoring pass — `running`, `done` with counts ("added 44 new PhD positions", "scored 128 of 530"), or `failed` with the reason.
 
-**With a job attached:** Click **Ask AI** on an expanded job card. The assistant automatically loads that job as context. You can ask things like "is this role a good fit for me?" or "what should I highlight in my cover letter for this position?"
+If something seems off, look here first.
+
+---
+
+## 11. Fishstick AI and character companions
+
+### Fishstick AI
+
+**Ask Fishstick** in the sidebar. On every question, the backend retrieves *live data* for the assistant: exact totals, status/source/country breakdowns, score distribution, the jobs best matching your question (full-text search), recent runs, and your watchlist. Counts come from the database, not the model's imagination — "how many PhD positions in Switzerland?" gets the real number.
+
+Attach a job via **Ask AI** on any card for job-specific questions.
 
 ### Puff and Brownie
 
-Two character companions sit in the bottom-right corner:
-- **Puff** (Jigglypuff) — enthusiastic, encouraging, great for resume pep talks and motivation
-- **Brownie** (Charizard) — chill, direct, useful for honest feedback on priorities
+Two companions in the bottom-right corner — **Puff** (encouraging) and **Brownie** (direct). Same live data access, different personalities. In PhD mode they know the PhD profile and positions.
 
-Click either to open their chat. They run on the same local model with different personalities.
+### Chat windows
+
+All chats have **half-screen and full-screen buttons** in their headers (click the active one to shrink back). When a character chat expands, its sprite docks into the chat header and returns to the corner on close. Conversations survive resizing and closing.
 
 ---
 
-## 10. Accessing from other devices
+## 12. Serper budget
 
-### Same network (home, office LAN)
+Serper credits are precious. The app enforces:
 
-Just run `./start.sh` as usual. The startup output prints a LAN URL:
-```
-  On your LAN:
-    Dashboard: http://10.187.97.15:5173
-```
+- **`search.serper_daily_cap`** (default 10) — a hard daily ceiling shared by every Serper caller; enforced in code, survives restarts.
+- **Query rationing** — the daily scan sends a small rotating window of your query list (full coverage over ~2 weeks), not all of it.
+- **Free-first sourcing** — LinkedIn (jobspy), GitHub, ATS APIs, and academic boards cost nothing.
 
-Open that URL on any phone, tablet, or other computer on the same Wi-Fi.
+At the default cap, 2,500 credits last 8+ months. The Logs page shows today's usage; when the cap trips mid-run, the run history says so explicitly.
 
-### Different network (internet, mobile data, remote access)
+---
 
-This uses **ngrok** to create a secure public tunnel to your Mac.
+## 13. Accessing from other devices
 
-**One-time setup:**
+**Same network:** `./start.sh` prints a LAN URL (`http://10.x.x.x:5173`) — open it on any device on your Wi-Fi.
+
+**Anywhere (ngrok):**
 ```bash
 brew install ngrok
-# Create a free account at ngrok.com, then:
-ngrok config add-authtoken <your-token-from-dashboard.ngrok.com>
-```
-
-**Every time you want remote access:**
-```bash
+ngrok config add-authtoken <token>    # one-time, free account
 ./start.sh --remote
 ```
-
-This builds the React app, starts the backend serving both the UI and API on port 8001, and opens a tunnel. Copy the `https://xxxx.ngrok-free.app` URL from the output — open it in any browser, anywhere.
-
-> The URL changes every time you restart ngrok on the free tier. For a stable URL, the paid plan ($10/month) gives you a fixed subdomain.
+Copy the `https://xxxx.ngrok-free.app` URL. The free tier changes the URL each restart.
 
 ---
 
-## 11. Email notifications (optional)
+## 14. Email notifications (optional)
 
-When a high-scoring job appears, the app can send you an email with an `.ics` calendar attachment as a reminder to apply.
+High-scoring new jobs can trigger an email with an `.ics` calendar reminder.
 
-### Setup
-
-1. Enable 2-factor authentication on your Gmail account
-2. Go to: Google Account → Security → 2-Step Verification → App passwords
-3. Generate an app password (select "Mail" and your device)
-4. Add it to `backend/.env`:
-   ```
-   SMTP_APP_PASSWORD=xxxx xxxx xxxx xxxx
-   ```
-5. In Settings → Config (or directly in `config.yaml`), set:
+1. Gmail → enable 2FA → create an **App password**
+2. `backend/.env`: `SMTP_APP_PASSWORD=xxxx xxxx xxxx xxxx`
+3. `config.yaml`:
    ```yaml
    notifications:
      email:
@@ -386,206 +324,94 @@ When a high-scoring job appears, the app can send you an email with an `.ics` ca
        score_threshold: 8
    ```
 
-Notifications fire automatically after each scan for any new job scoring ≥ `score_threshold`. You can also send one manually from any Priority job card (the ✉ button appears on expanded cards).
-
 ---
 
 <a name="phd"></a>
-## Setting it up for PhD search
+## 15. The PhD track
 
-This section is written for someone searching for PhD positions or funded research opportunities, not industry internships.
+The PhD side is a **first-class mode**, not a workaround: flip the sidebar toggle to **PhD** and the whole app — dashboard, tracker, feeds, chat, scoring — switches to the PhD profile. Your careers setup is untouched, so two people can share one install.
 
-The app was built with internship searches in mind but adapts well to PhD hunting with a few changes to the profile and by using the dedicated PhD crawl feature.
+### Step 1 — fill in `backend/phd_config.yaml`
 
----
-
-### Step 1 — Install everything the same way
-
-Follow sections 1–5 exactly as written above. The setup is identical.
-
----
-
-### Step 2 — Write your profile for a PhD search
-
-Open `backend/config.yaml` and replace the `profile` section with one tailored to academic applications.
+This file holds everything PhD-specific and **overrides** the equivalent sections in `config.yaml`:
 
 ```yaml
-profile:
-  name: "Your Name"
+phd_search:
+  sources: [google_jobs, linkedin]
+  time_filter: "3months"        # PhD cycles are slower than job postings
+  funding_required: true        # drop anything that doesn't mention funding
+  extra_keywords:               # drive the board + LinkedIn searches
+    - "fully funded PhD"
+    - "PhD studentship"
+    - "computer vision"         # ← your research area
+    - "medical imaging"
+  institution_whitelist:        # targeted Serper searches, rotated daily
+    - "Johns Hopkins University"
+    - "Carnegie Mellon University"
+    # ... as many as you like — a small window rotates through them
+  institution_blacklist: []
 
-  positions:
-    - "PhD student"
-    - "PhD candidate"
-    - "PhD fellowship"
-    - "research assistant"
-    - "graduate research assistant"
-    - "funded PhD position"
-
-  expertise:
-    - "your research area"        # e.g. "computational biology"
-    - "your methods"              # e.g. "single-cell RNA sequencing"
-    - "your tools/languages"      # e.g. "Python", "R", "MATLAB"
-    - "related field keywords"    # e.g. "genomics", "bioinformatics"
-
-  resume_summary: |
-    Write 3–4 sentences about your academic background. Include your
-    undergraduate degree and institution, your thesis topic or research
-    focus, any publications or conference presentations, and what kind
-    of PhD you are looking for (fully funded, specific field, location).
-
-    Example:
-    "MSc Bioinformatics graduate from [University], thesis on single-cell
-    transcriptomics of tumour microenvironments. Published at [conference].
-    Experienced in Python, R, and Snakemake pipelines. Seeking fully funded
-    PhD positions in computational biology, cancer genomics, or related
-    fields at North American or European institutions."
-
-  location_preference:
-    - "United States"
-    - "Canada"
-    - "United Kingdom"
-    - "Germany"
-    - "Netherlands"
-
-  remote_ok: false
-  relocation_ok: true    # PhD positions almost always require relocation
-```
-
-**Important:** The `positions` list drives the search. Terms like "PhD student" and "funded PhD position" match how universities post openings. Add your specific field too — e.g. "PhD computational neuroscience" — if you want targeted results.
-
----
-
-### Step 3 — Add your CV
-
-PhD applications are assessed on your CV, publications, and research statement — not a one-page resume. Add whatever documents you have:
-
-```bash
-python parse_resume.py /path/to/your/cv.pdf
-# or drop a .txt/.md version directly into backend/Resume/
-```
-
-You can add multiple files — a CV, a research statement, a list of publications. The AI reads all of them together when generating advice.
-
----
-
-### Step 4 — Use the PhD Crawl button
-
-On the dashboard, click **Crawl PhD**. This runs a targeted Serper search specifically for PhD positions using your profile's `positions` and `location_preference`.
-
-The results appear tagged with source `phd` and show up in the purple **PhD** floating panel on the right side of the screen.
-
-Click the expand button (⤢) in the PhD panel to open the full view, where results are grouped by university or institution. This makes it easy to see how many openings a given lab or department has at once.
-
----
-
-### Step 5 — Set up a university watchlist
-
-For PhD searches, the career page watchlist works as a list of university and research institute websites. Create a JSON file like this:
-
-```json
-{
-  "Top CS Programs": [
-    { "name": "MIT CSAIL",         "url": "https://www.csail.mit.edu/research" },
-    { "name": "Stanford AI Lab",   "url": "https://ai.stanford.edu/" },
-    { "name": "CMU School of CS",  "url": "https://www.cs.cmu.edu/research" }
-  ],
-  "Computational Biology": [
-    { "name": "Broad Institute",   "url": "https://www.broadinstitute.org/careers" },
-    { "name": "EMBL",              "url": "https://www.embl.org/jobs/" },
-    { "name": "Sanger Institute",  "url": "https://www.sanger.ac.uk/careers/" }
-  ],
-  "EU Research Institutes": [
-    { "name": "Max Planck",        "url": "https://www.mpg.de/jobboard" },
-    { "name": "ETH Zurich",        "url": "https://jobs.ethz.ch/site/index" },
-    { "name": "Helmholtz",         "url": "https://www.helmholtz.de/en/careers/" }
-  ]
-}
-```
-
-Organise by field, geography, or prestige tier — whatever makes sense for your search.
-
-Upload it in **Settings → Career Watch**, then click **Crawl Careers** to run it. Results appear in the teal **Careers** panel, grouped by institution in the expanded view.
-
----
-
-### Step 6 — Reading the results
-
-PhD listings behave a bit differently from industry job postings:
-
-- **Score 7–10** — the position closely matches your research area and stated background. Read it carefully
-- **Score 4–6** — adjacent field or partial skill match. Worth a quick read; you may be a strong candidate even if the AI is uncertain
-- **Score 1–3** — unlikely match, but if you recognise the lab or PI, it may still be worth a look
-- **Score null** — the AI could not score it (no description, timed out). Check these manually
-
-PhD listings often have sparse descriptions ("seeking motivated PhD students in machine learning"). The score will be lower than for a detailed industry JD — that is expected.
-
-**Use the AI features for PhD applications too:**
-- **Resume Tips** — compares your CV against the position description
-- **Cover Letter** — generates a research statement / letter of interest draft you can edit
-- **Ask AI** — open the Fishstick chat with the position attached and ask: "What research experience should I emphasise for this lab?"
-
----
-
-### Step 7 — Track your applications
-
-Use the **Tracker** (Kanban view in the sidebar) to track where each application stands. The columns work the same way:
-
-- **Applied** — submitted your application
-- **Screening** — heard back, initial contact with the lab
-- **Interview** — Zoom/in-person interview with the PI or committee
-- **Offer** — admission offer received
-
-Set a **deadline** on each card (inside the expanded job view) so you do not miss submission windows.
-
----
-
-### Tips specific to PhD searching
-
-- **Run Crawl PhD daily during peak season** (October–December for US programs, rolling for EU). Click it from the dashboard or wait for the scheduled run
-- **Add individual lab pages** to your career watchlist if you have specific PIs you want to work with — the Playwright scraper can often pull position listings from personal lab websites
-- **Notes field is your friend** — use it to record the PI's name, research group, and any personal connection or reason you are interested
-- **Email notifications** — set `score_threshold: 6` instead of 8 for PhD searches, since sparse descriptions lead to generally lower scores
-
----
-
-### Example PhD config
-
-Here is a complete `config.yaml` profile section ready to use for a computational biology PhD search:
-
-```yaml
-profile:
+phd_profile:                    # keep LAST in the file
   name: "Your Name"
   positions:
-    - "PhD student computational biology"
-    - "PhD candidate bioinformatics"
-    - "graduate research assistant genomics"
-    - "funded PhD position machine learning biology"
-    - "PhD fellowship"
-  expertise:
-    - "Python"
-    - "R"
-    - "bioinformatics"
-    - "single-cell sequencing"
-    - "machine learning"
-    - "genomics"
+    - "PhD Position Computer Vision"
+    - "Fully Funded PhD"
+    - "PhD Research Assistantship"
+  expertise:                    # first items = your specialization (drives scoring)
+    - "Computer Vision"
+    - "Medical Imaging"
+    - "Deep Learning"
+    - "PyTorch"
   resume_summary: |
-    MSc Bioinformatics graduate seeking a fully funded PhD position in
-    computational biology or genomics. Research background in single-cell
-    RNA sequencing analysis and tumour microenvironment modelling.
-    Strong Python and R skills. Open to positions in the US, UK, Germany,
-    and the Netherlands.
-  location_preference:
-    - "United States"
-    - "United Kingdom"
-    - "Germany"
-    - "Netherlands"
+    3–4 sentences: degrees, research focus, publications, what kind of
+    PhD you want (funded, field, region).
+  location_preference: ["United States", "Canada", "Europe"]
   remote_ok: false
   relocation_ok: true
-
-llm:
-  priority_threshold: 6     # lower threshold suits sparse PhD listings
 ```
+
+You can edit `phd_profile` in the browser too: **Settings → PhD Profile** (the default Settings tab in PhD mode) — it writes to this file and hot-reloads.
+
+### Step 2 — add the CV
+
+Parse it with Docling (see [section 4](#4-adding-your-resume-pdf-parsing) — `requirements_pdfparser.txt`) and name it with the PhD tag:
+
+```
+backend/Resume/MyCV___PHD.txt
+```
+
+PhD-mode Resume Tips, cover letters (research-statement drafts), and chat all use this CV — never the careers resume.
+
+### Step 3 — crawl
+
+Click **Crawl PhD** (the main button in PhD mode). One click runs, in order:
+
+1. **Institution search** (Serper, budget-capped) — "PhD «your position» application «university»" across a rotating window of your whitelist
+2. **Academic boards** (free) — EURAXESS and jobs.ac.uk, filtered to doctoral-titled positions, searched with your `extra_keywords`
+3. **LinkedIn** (free) — PhD listings via jobspy, plus funded-PhD hiring posts
+4. A scoring pass against the `phd_profile`
+
+With `funding_required: true`, results that never mention funding/assistantship/studentship/stipend are dropped (academic-board results are inherently salaried and skip this check).
+
+The LinkedIn panel in PhD mode has a **Posts** tab — professors announcing openings ("Fully funded PhD position in…") often appear there before any job board.
+
+### Step 4 — read the results
+
+- **7–10** — the position's focus matches your specialization; read carefully
+- **5–6** — related area or generic PhD listing; skim
+- **0–2** — wrong field, guide pages, or hiring-post noise
+- **unscored** — a pass hasn't reached it yet (they stay visible in PhD mode regardless of the score slider)
+
+### Step 5 — track applications
+
+The PhD Tracker is separate from the careers one. Use **➕ Add application** for programs you applied to through university portals — record the PI's name, portal login hints, and deadlines in the notes. Set deadlines so cards warn you (amber) when ≤ 7 days remain.
+
+### PhD-specific tips
+
+- Application season (Oct–Dec for the US, rolling for Europe): run **Crawl PhD** daily — it's nearly free (boards and LinkedIn cost nothing; only the institution search spends a few Serper credits)
+- Put target labs' pages in the career watchlist — Playwright can often scrape positions from personal lab sites
+- Ask Brownie "which of my PhD positions have deadlines this month?" — the chat sees live data
 
 ---
 
-*For anything not covered here, open the Fishstick AI chat and ask — it has full knowledge of every feature in the app.*
+*For anything not covered here, open the Fishstick AI chat and ask — it has full knowledge of every feature. And check the **Logs** page whenever you wonder what the app is doing.*
