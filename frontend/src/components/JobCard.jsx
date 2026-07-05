@@ -12,7 +12,7 @@ function avatarColor(name) {
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
-function CompanyAvatar({ company, title }) {
+export function CompanyAvatar({ company, title, size = 10 }) {
   // Use company initial, fall back to title initial, then a briefcase
   const src = company || title || "";
   const letter = src.trim()[0]?.toUpperCase() || null;
@@ -20,8 +20,8 @@ function CompanyAvatar({ company, title }) {
   const isDark = ["#097C87","#6366f1","#ec4899","#10b981"].includes(bg);
   return (
     <div
-      className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm"
-      style={{ background: bg, color: isDark ? "#fff" : "#1e293b" }}
+      className={`w-${size} h-${size} rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm`}
+      style={{ background: bg, color: isDark ? "#fff" : "#1e293b", width: size * 4, height: size * 4 }}
     >
       {letter ?? (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -54,17 +54,9 @@ function DeadlineBadge({ deadline }) {
   return <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{d}d</span>;
 }
 
-function Chip({ children, color }) {
-  return (
-    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${color || "bg-slate-100 text-slate-500"}`}>
-      {children}
-    </span>
-  );
-}
-
 function AiModal({ title, text, onClose }) {
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-6 backdrop-blur-sm" onClick={onClose}>
       <div
         className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
@@ -89,8 +81,10 @@ function AiModal({ title, text, onClose }) {
   );
 }
 
-export function JobCard({ job, onUpdate, onChat, onDelete, mode = "careers" }) {
-  const [expanded, setExpanded] = useState(false);
+/** The full detail body for one job — used inline (narrow screens) and by
+ *  the Dashboard's side drawer (wide screens). Mount with key={job.id} so
+ *  notes/deadline state resets when the job changes. */
+export function JobDetails({ job, onUpdate, onChat, mode = "careers", fullDescription = false }) {
   const [notes, setNotes] = useState(job.notes || "");
   const [deadline, setDeadline] = useState(job.deadline || "");
   const [saving, setSaving] = useState(false);
@@ -98,27 +92,6 @@ export function JobCard({ job, onUpdate, onChat, onDelete, mode = "careers" }) {
   const [genCL, setGenCL] = useState(false);
   const [genRA, setGenRA] = useState(false);
   const [notifySent, setNotifySent] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  async function handleDelete(e) {
-    e.stopPropagation();
-    if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3000); return; }
-    await api.deleteJob(job.id);
-    onDelete?.(job.id);
-  }
-
-  const score = job.match_score;
-  const dim = score != null && score < 5;
-  const deadlineSoon = job.deadline && daysUntil(job.deadline) !== null && daysUntil(job.deadline) <= 7 && daysUntil(job.deadline) >= 0;
-
-  // Left accent color based on score
-  let accentColor = "#e2e8f0";
-  if (score != null) {
-    if (score >= 9) accentColor = "#A1CCA6";
-    else if (score >= 7) accentColor = "#23CED9";
-    else if (score >= 5) accentColor = "#F9D779";
-  }
-  if (job.is_priority && score == null) accentColor = "#FCA47C";
 
   async function changeStatus(status) {
     const updated = await api.updateJob(job.id, { status });
@@ -165,180 +138,221 @@ export function JobCard({ job, onUpdate, onChat, onDelete, mode = "careers" }) {
     } catch (e) { alert("Notify failed: " + e.message); }
   }
 
-  const sourceLabel = { google_jobs: "Google", linkedin: "LinkedIn", linkedin_direct: "LinkedIn ✓", indeed: "Indeed", github_jobs: "⚡ SpeedyApply", career_page: "🏢 Career", phd: "🎓 PhD" };
-
   return (
-    <>
-      <div
-        className={`group/card bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden transition-all hover:shadow-md hover:border-slate-300 ${dim ? "opacity-45" : ""} ${deadlineSoon ? "border-amber-300" : ""}`}
-        style={{ boxShadow: expanded ? "0 4px 20px -4px rgba(0,0,0,0.10)" : undefined }}
-      >
-        {/* Left accent strip + card header */}
-        <div className="flex">
-          {/* Accent strip */}
-          <div className="w-1 flex-shrink-0 rounded-l-2xl" style={{ background: accentColor }} />
+    <div className="space-y-4">
+      {/* Match reason */}
+      {job.match_reason && (
+        <div className="flex items-start gap-2.5 bg-brand-teal/5 border border-brand-teal/15 rounded-xl px-3.5 py-2.5">
+          <svg className="flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#097C87" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <p className="text-xs text-brand-dark leading-relaxed"><span className="font-semibold">Match: </span>{job.match_reason}</p>
+        </div>
+      )}
 
-          <div className="flex-1 min-w-0">
-            {/* Header row */}
-            <div
-              className="flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none"
-              onClick={() => setExpanded((v) => !v)}
+      {/* Description */}
+      {job.description && (
+        <p className={`text-xs text-slate-600 whitespace-pre-line leading-relaxed ${fullDescription ? "" : "line-clamp-5"}`}>
+          {job.description}
+        </p>
+      )}
+
+      {/* Status pills */}
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {STATUS_OPTIONS.map((s) => (
+          <button
+            key={s}
+            onClick={() => changeStatus(s)}
+            className={`text-xs px-3 py-1 rounded-full border transition-all ${
+              job.status === s
+                ? "bg-brand-dark text-white border-brand-dark shadow-sm"
+                : "bg-white text-slate-500 border-slate-200 hover:border-brand-teal/50 hover:text-slate-700"
+            }`}
+          >
+            {s}
+          </button>
+        ))}
+        <a
+          href={job.url}
+          target="_blank"
+          rel="noreferrer"
+          className="ml-auto text-xs font-medium text-brand-dark hover:underline flex items-center gap-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Open listing
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+      </div>
+
+      {/* AI tools + deadline */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-slate-400">Deadline</span>
+          <input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            className="border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand-teal/40 bg-slate-50"
+          />
+        </div>
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <button
+            onClick={handleCoverLetter}
+            disabled={genCL}
+            className="text-xs px-3 py-1.5 rounded-lg border border-brand-orange/40 text-brand-orange bg-orange-50 hover:bg-orange-100 disabled:opacity-50 transition-colors font-medium"
+          >
+            {genCL ? "Writing…" : "✦ Cover Letter"}
+          </button>
+          <button
+            onClick={handleResumeAdvice}
+            disabled={genRA}
+            className="text-xs px-3 py-1.5 rounded-lg border border-brand-teal/30 text-brand-dark bg-brand-teal/8 hover:bg-brand-teal/15 disabled:opacity-50 transition-colors font-medium"
+          >
+            {genRA ? "Analyzing…" : "📄 Resume Tips"}
+          </button>
+          {job.is_priority && (
+            <button
+              onClick={handleNotify}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors font-medium ${
+                notifySent
+                  ? "border-brand-sage bg-brand-sage/20 text-emerald-700"
+                  : "border-brand-sage/40 text-brand-dark bg-brand-sage/10 hover:bg-brand-sage/20"
+              }`}
             >
-              <CompanyAvatar company={job.company} title={job.title} />
-
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-800 text-sm truncate leading-snug">{job.title}</p>
-                <div className="flex items-center gap-1.5 mt-0.5 min-w-0 overflow-hidden">
-                  {job.company && <span className="text-xs text-slate-500 truncate flex-shrink-0 max-w-[50%]">{job.company}</span>}
-                  {job.location && <span className="text-xs text-slate-400 truncate min-w-0">· {job.location}</span>}
-                </div>
-              </div>
-
-              {/* Right side badges — progressively shown as screen widens */}
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <DeadlineBadge deadline={job.deadline} />
-                {job.country && <span className="hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full font-medium bg-brand-teal/10 text-brand-dark whitespace-nowrap">{job.country}</span>}
-                {job.source && <span className="hidden md:inline-flex text-[10px] px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-500 whitespace-nowrap">{sourceLabel[job.source] || job.source}</span>}
-                <span className="hidden sm:inline text-[10px] text-slate-400 w-6 text-right">{timeAgo(job.date_found)}</span>
-                <ScoreBadge score={job.match_score} />
-                <svg className={`text-slate-300 transition-transform flex-shrink-0 ${expanded ? "rotate-180" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                <button
-                  onClick={handleDelete}
-                  title={confirmDelete ? "Click again to confirm" : "Delete this listing"}
-                  className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg transition-colors opacity-0 group-hover/card:opacity-100"
-                  style={{ color: confirmDelete ? "#ef4444" : "#94a3b8", background: confirmDelete ? "#fee2e2" : "transparent" }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    {confirmDelete
-                      ? <><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></>
-                      : <><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></>
-                    }
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Expanded body */}
-            {expanded && (
-              <div className="border-t border-slate-100 px-4 py-4 space-y-4">
-                {/* Match reason */}
-                {job.match_reason && (
-                  <div className="flex items-start gap-2.5 bg-brand-teal/5 border border-brand-teal/15 rounded-xl px-3.5 py-2.5">
-                    <svg className="flex-shrink-0 mt-0.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#097C87" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    <p className="text-xs text-brand-dark leading-relaxed"><span className="font-semibold">Match: </span>{job.match_reason}</p>
-                  </div>
-                )}
-
-                {/* Description */}
-                {job.description && (
-                  <p className="text-xs text-slate-600 whitespace-pre-line line-clamp-5 leading-relaxed">{job.description}</p>
-                )}
-
-                {/* Status pills */}
-                <div className="flex flex-wrap gap-1.5 items-center">
-                  {STATUS_OPTIONS.map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => changeStatus(s)}
-                      className={`text-xs px-3 py-1 rounded-full border transition-all ${
-                        job.status === s
-                          ? "bg-brand-dark text-white border-brand-dark shadow-sm"
-                          : "bg-white text-slate-500 border-slate-200 hover:border-brand-teal/50 hover:text-slate-700"
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                  <a
-                    href={job.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="ml-auto text-xs font-medium text-brand-dark hover:underline flex items-center gap-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Open listing
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                  </a>
-                </div>
-
-                {/* AI tools + deadline */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <span className="text-slate-400">Deadline</span>
-                    <input
-                      type="date"
-                      value={deadline}
-                      onChange={(e) => setDeadline(e.target.value)}
-                      className="border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-brand-teal/40 bg-slate-50"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 ml-auto">
-                    <button
-                      onClick={handleCoverLetter}
-                      disabled={genCL}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-brand-orange/40 text-brand-orange bg-orange-50 hover:bg-orange-100 disabled:opacity-50 transition-colors font-medium"
-                    >
-                      {genCL ? "Writing…" : "✦ Cover Letter"}
-                    </button>
-                    <button
-                      onClick={handleResumeAdvice}
-                      disabled={genRA}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-brand-teal/30 text-brand-dark bg-brand-teal/8 hover:bg-brand-teal/15 disabled:opacity-50 transition-colors font-medium"
-                    >
-                      {genRA ? "Analyzing…" : "📄 Resume Tips"}
-                    </button>
-                    {job.is_priority && (
-                      <button
-                        onClick={handleNotify}
-                        className={`text-xs px-3 py-1.5 rounded-lg border transition-colors font-medium ${
-                          notifySent
-                            ? "border-brand-sage bg-brand-sage/20 text-emerald-700"
-                            : "border-brand-sage/40 text-brand-dark bg-brand-sage/10 hover:bg-brand-sage/20"
-                        }`}
-                      >
-                        {notifySent ? "✓ Sent!" : "✉ Notify"}
-                      </button>
-                    )}
-                    {onChat && (
-                      <button
-                        onClick={() => onChat(job)}
-                        className="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all flex items-center gap-1.5 hover:brightness-105"
-                        style={{ borderColor: "rgba(35,206,217,0.4)", color: "#097C87", background: "rgba(35,206,217,0.08)" }}
-                        title="Ask Fishstick AI about this job"
-                      >
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                        </svg>
-                        Ask AI
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div className="flex gap-2">
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add notes…"
-                    className="flex-1 text-xs border border-slate-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-slate-50 placeholder-slate-400"
-                    rows={2}
-                  />
-                  <button
-                    onClick={saveChanges}
-                    disabled={saving}
-                    className="text-xs px-3 py-1 self-start rounded-lg bg-brand-dark text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-                  >
-                    {saving ? "…" : "Save"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+              {notifySent ? "✓ Sent!" : "✉ Notify"}
+            </button>
+          )}
+          {onChat && (
+            <button
+              onClick={() => onChat(job)}
+              className="text-xs px-3 py-1.5 rounded-lg border font-medium transition-all flex items-center gap-1.5 hover:brightness-105"
+              style={{ borderColor: "rgba(35,206,217,0.4)", color: "#097C87", background: "rgba(35,206,217,0.08)" }}
+              title="Ask Fishstick AI about this job"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+              </svg>
+              Ask AI
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Notes */}
+      <div className="flex gap-2">
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Add notes…"
+          className="flex-1 text-xs border border-slate-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-brand-teal/30 bg-slate-50 placeholder-slate-400"
+          rows={2}
+        />
+        <button
+          onClick={saveChanges}
+          disabled={saving}
+          className="text-xs px-3 py-1 self-start rounded-lg bg-brand-dark text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+        >
+          {saving ? "…" : "Save"}
+        </button>
+      </div>
+
       {modal && <AiModal title={modal.title} text={modal.text} onClose={() => setModal(null)} />}
-    </>
+    </div>
+  );
+}
+
+export function JobCard({ job, onUpdate, onChat, onDelete, mode = "careers", onOpenDetail, selected = false }) {
+  const [expanded, setExpanded] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  async function handleDelete(e) {
+    e.stopPropagation();
+    if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 3000); return; }
+    await api.deleteJob(job.id);
+    onDelete?.(job.id);
+  }
+
+  function handleHeaderClick() {
+    // On wide screens (2-column grid) open the side drawer so the row
+    // neighbor doesn't stretch; inline expansion on narrow screens.
+    if (onOpenDetail && window.matchMedia("(min-width: 1280px)").matches) {
+      onOpenDetail(job);
+    } else {
+      setExpanded((v) => !v);
+    }
+  }
+
+  const score = job.match_score;
+  const dim = score != null && score < 5;
+  const deadlineSoon = job.deadline && daysUntil(job.deadline) !== null && daysUntil(job.deadline) <= 7 && daysUntil(job.deadline) >= 0;
+
+  // Left accent color based on score
+  let accentColor = "#e2e8f0";
+  if (score != null) {
+    if (score >= 9) accentColor = "#A1CCA6";
+    else if (score >= 7) accentColor = "#23CED9";
+    else if (score >= 5) accentColor = "#F9D779";
+  }
+  if (job.is_priority && score == null) accentColor = "#FCA47C";
+
+  const sourceLabel = { google_jobs: "Google", linkedin: "LinkedIn", linkedin_direct: "LinkedIn ✓", indeed: "Indeed", github_jobs: "⚡ SpeedyApply", career_page: "🏢 Career", phd: "🎓 PhD" };
+
+  return (
+    <div
+      className={`group/card bg-white rounded-2xl border mb-3 overflow-hidden transition-all hover:shadow-md ${dim ? "opacity-45" : ""} ${
+        selected ? "border-brand-teal shadow-md" : deadlineSoon ? "border-amber-300 hover:border-amber-400" : "border-slate-200 hover:border-slate-300"
+      }`}
+      style={{ boxShadow: expanded ? "0 4px 20px -4px rgba(0,0,0,0.10)" : undefined }}
+    >
+      {/* Left accent strip + card header */}
+      <div className="flex">
+        {/* Accent strip */}
+        <div className="w-1 flex-shrink-0 rounded-l-2xl" style={{ background: accentColor }} />
+
+        <div className="flex-1 min-w-0">
+          {/* Header row */}
+          <div
+            className="flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none"
+            onClick={handleHeaderClick}
+          >
+            <CompanyAvatar company={job.company} title={job.title} />
+
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-slate-800 text-sm truncate leading-snug">{job.title}</p>
+              <div className="flex items-center gap-1.5 mt-0.5 min-w-0 overflow-hidden">
+                {job.company && <span className="text-xs text-slate-500 truncate flex-shrink-0 max-w-[50%]">{job.company}</span>}
+                {job.location && <span className="text-xs text-slate-400 truncate min-w-0">· {job.location}</span>}
+              </div>
+            </div>
+
+            {/* Right side badges — progressively shown as screen widens */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <DeadlineBadge deadline={job.deadline} />
+              {job.country && <span className="hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full font-medium bg-brand-teal/10 text-brand-dark whitespace-nowrap">{job.country}</span>}
+              {job.source && <span className="hidden md:inline-flex text-[10px] px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-500 whitespace-nowrap">{sourceLabel[job.source] || job.source}</span>}
+              <span className="hidden sm:inline text-[10px] text-slate-400 w-6 text-right">{timeAgo(job.date_found)}</span>
+              <ScoreBadge score={job.match_score} />
+              <svg className={`text-slate-300 transition-transform flex-shrink-0 xl:hidden ${expanded ? "rotate-180" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              <svg className="text-slate-300 flex-shrink-0 hidden xl:block" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+              <button
+                onClick={handleDelete}
+                title={confirmDelete ? "Click again to confirm" : "Delete this listing"}
+                className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-lg transition-colors opacity-0 group-hover/card:opacity-100"
+                style={{ color: confirmDelete ? "#ef4444" : "#94a3b8", background: confirmDelete ? "#fee2e2" : "transparent" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Expanded body — inline (narrow screens / no drawer available) */}
+          {expanded && (
+            <div className="border-t border-slate-100 px-4 py-4">
+              <JobDetails key={job.id} job={job} onUpdate={onUpdate} onChat={onChat} mode={mode} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

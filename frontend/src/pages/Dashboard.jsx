@@ -3,6 +3,7 @@ import { api } from "../api";
 import { CollectionBin } from "../components/CollectionBin";
 import { FilterBar } from "../components/FilterBar";
 import { JobCard } from "../components/JobCard";
+import { JobDetailDrawer } from "../components/JobDetailDrawer";
 import { StatsBar } from "../components/StatsBar";
 import { TrendCharts } from "../components/TrendCharts";
 
@@ -122,6 +123,7 @@ export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers" }) {
   const [crawlMsg, setCrawlMsg] = useState(null);
   const [pending, setPending] = useState(null);   // unscored job count (both modes)
   const [scoring, setScoring] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null); // detail drawer (wide screens)
 
   useEffect(() => {
     api.getConfig().then(setConfig).catch(() => {});
@@ -186,10 +188,17 @@ export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers" }) {
 
   function handleUpdate(updated) {
     setJobs((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
+    setSelectedJob((prev) => (prev && prev.id === updated.id ? updated : prev));
   }
 
   function handleDelete(id) {
     setJobs((prev) => prev.filter((j) => j.id !== id));
+    setSelectedJob((prev) => (prev && prev.id === id ? null : prev));
+  }
+
+  async function handleDrawerDelete(id) {
+    try { await api.deleteJob(id); } catch {}
+    handleDelete(id);
   }
 
   function handleMetricFilter(newFilters, filterId) {
@@ -389,12 +398,37 @@ export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers" }) {
               <p className="text-xs text-slate-400 mb-3 font-medium">
                 {jobs.length} jobs{activeCountry ? ` · ${COUNTRY_FLAGS[activeCountry] || ""} ${activeCountry}` : ""}
               </p>
-              <div className="xl:grid xl:grid-cols-2 xl:gap-3">
-                {jobs.map((job) => <JobCard key={job.id} job={job} onUpdate={handleUpdate} onChat={onChat} onDelete={handleDelete} mode={mode} />)}
+              {/* items-start stops a row neighbor from stretching to match an
+                  expanded card; on xl, expansion opens the side drawer anyway */}
+              <div className="xl:grid xl:grid-cols-2 xl:gap-3 xl:items-start">
+                {jobs.map((job) => (
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    onUpdate={handleUpdate}
+                    onChat={onChat}
+                    onDelete={handleDelete}
+                    mode={mode}
+                    onOpenDetail={(j) => setSelectedJob((prev) => (prev?.id === j.id ? null : j))}
+                    selected={selectedJob?.id === job.id}
+                  />
+                ))}
               </div>
             </div>
           )}
         </>
+      )}
+
+      {/* Job detail drawer (opened from cards on wide screens) */}
+      {selectedJob && (
+        <JobDetailDrawer
+          job={selectedJob}
+          onClose={() => setSelectedJob(null)}
+          onUpdate={handleUpdate}
+          onChat={onChat}
+          onDelete={handleDrawerDelete}
+          mode={mode}
+        />
       )}
     </div>
   );
