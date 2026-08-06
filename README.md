@@ -52,7 +52,8 @@ SERPER_API_KEY=your_key_here
 
 Edit your profile in `backend/config.yaml` (and the PhD profile in `backend/phd_config.yaml`), then:
 ```bash
-./start.sh
+./start.sh #localhost
+./start.sh --remote #For hosting with ngrok
 ```
 
 Open **http://localhost:5173** (dev) or **http://localhost:8001** (built UI).
