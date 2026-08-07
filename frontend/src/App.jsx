@@ -122,6 +122,29 @@ function ModeToggle({ mode, onSwitch }) {
   );
 }
 
+function InternshipsToggle({ checked, onChange }) {
+  return (
+    <label className="mx-4 mb-4 flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer select-none" style={{ background: "rgba(0,0,0,0.22)" }}>
+      <span className="text-[11px] font-bold" style={{ color: "rgba(255,255,255,0.75)" }}>Internships only</span>
+      <span
+        className="relative inline-flex items-center rounded-full transition-colors duration-200"
+        style={{ width: 34, height: 18, background: checked ? "linear-gradient(135deg, #23CED9, #1A8C72)" : "rgba(255,255,255,0.2)" }}
+      >
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="absolute inset-0 opacity-0 cursor-pointer"
+        />
+        <span
+          className="inline-block rounded-full bg-white shadow transition-transform duration-200"
+          style={{ width: 14, height: 14, transform: `translateX(${checked ? 18 : 2}px)` }}
+        />
+      </span>
+    </label>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState("Dashboard");
   const [chatOpen, setChatOpen] = useState(false);
@@ -129,6 +152,9 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mode, setMode] = useState(() => {
     try { return localStorage.getItem("appMode") || "careers"; } catch { return "careers"; }
+  });
+  const [internshipsOnly, setInternshipsOnly] = useState(() => {
+    try { return localStorage.getItem("internshipsOnly") === "true"; } catch { return false; }
   });
   const [panelVis, setPanelVis] = useState(() => {
     const saved = loadPanelVis();
@@ -153,6 +179,11 @@ export default function App() {
   function switchMode(m) {
     setMode(m);
     try { localStorage.setItem("appMode", m); } catch {}
+  }
+
+  function toggleInternshipsOnly(v) {
+    setInternshipsOnly(v);
+    try { localStorage.setItem("internshipsOnly", v); } catch {}
   }
 
   function openChat(job = null) {
@@ -233,6 +264,9 @@ export default function App() {
         {/* Mode toggle — My Careers / PhD */}
         <ModeToggle mode={mode} onSwitch={switchMode} />
 
+        {/* Internships-only filter — applies to the Dashboard job list */}
+        <InternshipsToggle checked={internshipsOnly} onChange={toggleInternshipsOnly} />
+
         <div className="mx-5 mb-4 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)" }} />
 
         {/* Nav */}
@@ -301,7 +335,7 @@ export default function App() {
 
       {/* Main content — full width, padded top for hamburger button */}
       <main className="flex-1 min-h-screen w-full pt-14 relative" style={{ zIndex: 1 }}>
-        {page === "Dashboard" && <Dashboard onChat={openChat} panelVis={panelVis} onShowPanel={showPanel} mode={mode} />}
+        {page === "Dashboard" && <Dashboard onChat={openChat} panelVis={panelVis} onShowPanel={showPanel} mode={mode} internshipsOnly={internshipsOnly} />}
         {page === "Tracker"   && <Tracker mode={mode} onChat={openChat} />}
         {page === "Logs"      && <Logs />}
         {page === "Settings"  && <Settings mode={mode} />}

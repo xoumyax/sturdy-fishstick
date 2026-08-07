@@ -109,7 +109,7 @@ const PANEL_TABS = [
   },
 ];
 
-export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers" }) {
+export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers", internshipsOnly = false }) {
   // PhD jobs start unscored, so the PhD dashboard must not hide NULL scores
   const defaultFilters = mode === "phd" ? { score_min: 0 } : { score_min: 6 };
   const [jobs, setJobs] = useState([]);
@@ -145,11 +145,12 @@ export function Dashboard({ onChat, panelVis, onShowPanel, mode = "careers" }) {
     setLoading(true);
     const params = { ...filters, mode };
     if (activeCountry) params.country = activeCountry;
+    if (internshipsOnly) params.internship_only = true;
     try {
       const data = await api.getJobs(params);
       setJobs(data);
     } finally { setLoading(false); }
-  }, [view, filters, activeCountry, mode]);
+  }, [view, filters, activeCountry, mode, internshipsOnly]);
 
   useEffect(() => { fetchJobs(); }, [fetchJobs]);
 

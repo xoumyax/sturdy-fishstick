@@ -39,6 +39,7 @@ def list_jobs(
     kind: Optional[str] = Query(None),
     show_aggregates: bool = Query(False),
     only_aggregates: bool = Query(False),
+    internship_only: bool = Query(False),
     sort: Optional[str] = Query("score"),
     session: Session = Depends(get_session),
 ):
@@ -68,6 +69,8 @@ def list_jobs(
             stmt = stmt.where(Job.match_score >= score_min)
     if is_priority is not None:
         stmt = stmt.where(Job.is_priority == is_priority)
+    if internship_only:
+        stmt = stmt.where(Job.title.ilike("%intern%"))
     if country == "Other":
         stmt = stmt.where((Job.country == None) | (Job.country == "Other"))
     elif country:
