@@ -39,6 +39,7 @@ def list_jobs(
     kind: Optional[str] = Query(None),
     show_aggregates: bool = Query(False),
     only_aggregates: bool = Query(False),
+    sort: Optional[str] = Query("score"),
     session: Session = Depends(get_session),
 ):
     stmt = _apply_mode(select(Job), mode)
@@ -71,7 +72,10 @@ def list_jobs(
         stmt = stmt.where((Job.country == None) | (Job.country == "Other"))
     elif country:
         stmt = stmt.where(Job.country == country)
-    stmt = stmt.order_by(nullslast(Job.match_score.desc()), Job.date_found.desc())
+    if sort == "newest":
+        stmt = stmt.order_by(Job.date_found.desc())
+    else:
+        stmt = stmt.order_by(nullslast(Job.match_score.desc()), Job.date_found.desc())
     return session.exec(stmt).all()
 
 

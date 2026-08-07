@@ -149,7 +149,7 @@ async def _score_pending_locked() -> int:
 async def run_search_pipeline() -> SearchRun:
     from .activity import log_activity
     config = get_config()
-    log_activity("scan", "started", "daily scan: Serper + LinkedIn (jobspy) + GitHub")
+    log_activity("scan", "started", "daily scan: Serper + LinkedIn (jobspy) + GitHub + career pages + PhD")
     run = SearchRun()
 
     with Session(engine) as session:
@@ -245,6 +245,23 @@ async def run_search_pipeline() -> SearchRun:
                 session.refresh(j)
 
         logger.info("Run %s: %d new jobs inserted", run_id, len(new_jobs))
+
+        # Career pages (Greenhouse/Lever/Ashby/Workable) — historically the
+        # biggest source of new jobs, previously manual-only via
+        # POST /search/crawl-careers. Each crawl does its own insert + scoring
+        # pass and activity logging, so failures here don't fail the scan.
+        try:
+            from .routers.search import _crawl_careers_inner
+            await _crawl_careers_inner()
+        except Exception as e:
+            logger.warning("Run %s: career crawl failed: %s", run_id, e)
+
+        # PhD positions — previously manual-only via POST /search/crawl-phd.
+        try:
+            from .routers.search import _crawl_phd_inner
+            await _crawl_phd_inner()
+        except Exception as e:
+            logger.warning("Run %s: PhD crawl failed: %s", run_id, e)
 
         # One pass scores everything unscored (careers + PhD) with the small
         # scoring model, then unloads it.

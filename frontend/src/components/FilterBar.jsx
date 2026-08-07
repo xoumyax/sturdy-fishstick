@@ -15,6 +15,15 @@ export function FilterBar({ filters, onChange }) {
       </select>
 
       <select
+        value={filters.sort || "score"}
+        onChange={(e) => update("sort", e.target.value)}
+        className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-teal/40 bg-slate-50 text-slate-600"
+      >
+        <option value="score">Best matched</option>
+        <option value="newest">Newest first</option>
+      </select>
+
+      <select
         value={filters.source || ""}
         onChange={(e) => update("source", e.target.value || null)}
         className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-teal/40 bg-slate-50 text-slate-600"
