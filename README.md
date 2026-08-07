@@ -176,4 +176,4 @@ sturdy-fishstick/
 
 ## License
 
-MIT — see `LICENSE`.
+see `LICENSE`.
